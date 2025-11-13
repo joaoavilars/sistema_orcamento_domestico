@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	// --- A CORREÇÃO ESTÁ AQUI ---
 	"github.com/seu-usuario/orcamento-app/database"
 )
 
 // GetDashboardSumario - GET /dashboard/sumario
 func GetDashboardSumario(c *gin.Context) {
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
@@ -26,14 +26,16 @@ func GetDashboardSumario(c *gin.Context) {
 
 	var totalReceitas, totalDespesas float64
 
+	// --- MUDANÇA: Usar familia_id ---
 	database.DB.Table("transacoes").
-		Where("usuario_id = ? AND tipo = 'receita' AND data_transacao BETWEEN ? AND ?", usuarioID, primeiroDia, ultimoDia).
+		Where("familia_id = ? AND tipo = 'receita' AND data_transacao BETWEEN ? AND ?", familiaID, primeiroDia, ultimoDia).
 		Select("COALESCE(SUM(valor), 0)").
 		Row().
 		Scan(&totalReceitas)
 
+	// --- MUDANÇA: Usar familia_id ---
 	database.DB.Table("transacoes").
-		Where("usuario_id = ? AND tipo = 'despesa' AND data_transacao BETWEEN ? AND ?", usuarioID, primeiroDia, ultimoDia).
+		Where("familia_id = ? AND tipo = 'despesa' AND data_transacao BETWEEN ? AND ?", familiaID, primeiroDia, ultimoDia).
 		Select("COALESCE(SUM(valor), 0)").
 		Row().
 		Scan(&totalDespesas)
@@ -49,7 +51,8 @@ func GetDashboardSumario(c *gin.Context) {
 
 // GetDashboardPizzaCategorias - GET /dashboard/pizza-categorias
 func GetDashboardPizzaCategorias(c *gin.Context) {
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
@@ -68,10 +71,11 @@ func GetDashboardPizzaCategorias(c *gin.Context) {
 	}
 	var resultados []ResultadoPizza
 
+	// --- MUDANÇA: Usar t.familia_id ---
 	database.DB.Table("transacoes AS t").
 		Select("c.nome, c.cor_hex AS cor, SUM(t.valor) AS total").
 		Joins("JOIN categorias AS c ON c.id = t.categoria_id").
-		Where("t.usuario_id = ? AND t.tipo = 'despesa' AND t.data_transacao BETWEEN ? AND ?", usuarioID, primeiroDia, ultimoDia).
+		Where("t.familia_id = ? AND t.tipo = 'despesa' AND t.data_transacao BETWEEN ? AND ?", familiaID, primeiroDia, ultimoDia).
 		Group("c.nome, c.cor_hex").
 		Order("total DESC").
 		Scan(&resultados)
@@ -81,7 +85,8 @@ func GetDashboardPizzaCategorias(c *gin.Context) {
 
 // GetDashboardColunasBalanco - GET /dashboard/colunas-balanco
 func GetDashboardColunasBalanco(c *gin.Context) {
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
@@ -114,13 +119,15 @@ func GetDashboardColunasBalanco(c *gin.Context) {
 	}
 	var queryResults []ResultadoQuery
 
+	// --- MUDANÇA: Usar familia_id ---
 	database.DB.Table("transacoes").
 		Select("EXTRACT(MONTH FROM data_transacao) AS mes_num, "+
 			"SUM(CASE WHEN tipo = 'receita' THEN valor ELSE 0 END) AS receita, "+
 			"SUM(CASE WHEN tipo = 'despesa' THEN valor ELSE 0 END) AS despesa").
-		Where("usuario_id = ? AND EXTRACT(YEAR FROM data_transacao) = ?", usuarioID, ano).
+		Where("familia_id = ? AND EXTRACT(YEAR FROM data_transacao) = ?", familiaID, ano).
 		Group("EXTRACT(MONTH FROM data_transacao)").
 		Scan(&queryResults)
+	// --- FIM DA MUDANÇA ---
 
 	for _, res := range queryResults {
 		if res.MesNum >= 1 && res.MesNum <= 12 {

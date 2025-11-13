@@ -23,3 +23,25 @@ func getUsuarioIDFromContext(c *gin.Context) (uint, bool) {
 
 	return usuarioID, true
 }
+
+func getFamiliaIDFromContext(c *gin.Context) (uint, bool) {
+	familiaIDInterface, exists := c.Get("familiaID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Família não autenticada no contexto"})
+		return 0, false
+	}
+
+	familiaID, ok := familiaIDInterface.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Tipo de ID da família inválido no contexto"})
+		return 0, false
+	}
+
+	// Se o ID for 0 (admin ou usuário sem família), bloqueia
+	if familiaID == 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Usuário não está associado a nenhuma família"})
+		return 0, false
+	}
+
+	return familiaID, true
+}

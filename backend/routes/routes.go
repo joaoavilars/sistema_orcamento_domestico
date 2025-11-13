@@ -51,14 +51,16 @@ func SetupRouter() *gin.Engine {
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 		{
-			// /api/admin/register (O novo "Cadastrar Usuário")
+			// Usuários
 			admin.POST("/register", handlers.RegisterUser)
-
-			// /api/admin/users
 			admin.GET("/users", handlers.ListUsers)
+			admin.PUT("/users/:id", handlers.UpdateUser) // <-- ADICIONE ESTA LINHA
 			admin.DELETE("/users/:id", handlers.DeleteUser)
+
+			// Famílias
+			admin.GET("/familias", handlers.ListFamilias)   // <-- ADICIONE ESTA LINHA
+			admin.POST("/familias", handlers.CreateFamilia) // <-- ADICIONE ESTA LINHA
 		}
 	}
-
 	return r
 }

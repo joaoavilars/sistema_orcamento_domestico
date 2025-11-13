@@ -4,19 +4,22 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
+	"strings" // <-- Importa o pacote "strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/seu-usuario/orcamento-app/handlers" // Importa o handlers para usar a struct Claims
+	"github.com/seu-usuario/orcamento-app/database" // Importa o database
+	"github.com/seu-usuario/orcamento-app/handlers"
+	"github.com/seu-usuario/orcamento-app/models" // Importa os models
 )
 
 var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
-// AuthMiddleware é o nosso "guarda" de rotas
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
+
+		// --- INÍCIO DO CÓDIGO FALTANTE ---
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token de autorização não fornecido"})
 			c.Abort()
@@ -29,8 +32,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		// --- FIM DO CÓDIGO FALTANTE ---
 
-		// Valida o token
 		claims := &handlers.Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
@@ -43,10 +46,26 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Se o token for válido, armazena o ID do usuário no contexto do Gin
-		c.Set("usuarioID", claims.UserID)
+		// --- MUDANÇA: BUSCAR FAMILIA ID ---
+		var user models.Usuario
+		if err := database.DB.First(&user, claims.UserID).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário do token não encontrado"})
+			c.Abort()
+			return
+		}
 
-		// Continua para o próximo handler
+		// Armazena ID do Usuário, Role e ID da Família no contexto
+		c.Set("usuarioID", user.ID)
+		c.Set("usuarioRole", user.Role)
+
+		if user.FamiliaID != nil {
+			c.Set("familiaID", *user.FamiliaID)
+		} else {
+			// Se familia_id for nulo (ex: admin), colocamos 0
+			c.Set("familiaID", uint(0))
+		}
+		// --- FIM DA MUDANÇA ---
+
 		c.Next()
 	}
 }

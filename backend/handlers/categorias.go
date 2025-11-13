@@ -11,14 +11,16 @@ import (
 
 // GetCategorias - GET /categorias
 func GetCategorias(c *gin.Context) {
-	// Pega o ID do usuário do contexto do middleware
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return // A função helper já enviou a resposta de erro
 	}
+	// --- FIM DA MUDANÇA ---
 
 	var categorias []models.Categoria
-	if err := database.DB.Where("usuario_id = ?", usuarioID).Find(&categorias).Error; err != nil {
+	// --- MUDANÇA: Usar familia_id ---
+	if err := database.DB.Where("familia_id = ?", familiaID).Find(&categorias).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -34,12 +36,13 @@ func CreateCategoria(c *gin.Context) {
 		return
 	}
 
-	// Pega o ID do usuário do contexto do middleware
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	input.UsuarioID = usuarioID // Define o dono da categoria
+	input.FamiliaID = familiaID // Define a dona da categoria (usa FamiliaID)
+	// --- FIM DA MUDANÇA ---
 
 	if err := database.DB.Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -51,11 +54,12 @@ func CreateCategoria(c *gin.Context) {
 
 // DeleteCategoria - DELETE /categorias/:id
 func DeleteCategoria(c *gin.Context) {
-	// Pega o ID do usuário do contexto do middleware
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
+	// --- FIM DA MUDANÇA ---
 
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -64,7 +68,8 @@ func DeleteCategoria(c *gin.Context) {
 		return
 	}
 
-	result := database.DB.Where("id = ? AND usuario_id = ?", id, usuarioID).Delete(&models.Categoria{})
+	// --- MUDANÇA: Usar familia_id ---
+	result := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).Delete(&models.Categoria{})
 
 	if result.Error != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Não foi possível excluir. A categoria pode estar em uso por transações."})
@@ -72,7 +77,7 @@ func DeleteCategoria(c *gin.Context) {
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Categoria não encontrada ou não pertence ao usuário"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Categoria não encontrada ou não pertence à família"})
 		return
 	}
 

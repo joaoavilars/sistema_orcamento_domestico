@@ -12,10 +12,10 @@ import (
 
 // GetTransacoes - GET /transacoes
 func GetTransacoes(c *gin.Context) {
-	// --- MUDANÇA ---
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
-		return // Erro já enviado
+		return // A função helper já enviou a resposta de erro
 	}
 	// --- FIM DA MUDANÇA ---
 
@@ -34,7 +34,9 @@ func GetTransacoes(c *gin.Context) {
 
 	result := database.DB.
 		Preload("Categoria").
-		Where("usuario_id = ?", usuarioID). // <-- Agora usa o ID correto
+		// --- MUDANÇA: Usar familia_id ---
+		Where("familia_id = ?", familiaID).
+		// --- FIM DA MUDANÇA ---
 		Where("data_transacao BETWEEN ? AND ?", primeiroDia, ultimoDia).
 		Order("data_transacao DESC").
 		Find(&transacoes)
@@ -54,12 +56,12 @@ func CreateTransacao(c *gin.Context) {
 		return
 	}
 
-	// --- MUDANÇA ---
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	input.UsuarioID = usuarioID // <-- Define o dono
+	input.FamiliaID = familiaID // Define a dona da transação (usa FamiliaID)
 	// --- FIM DA MUDANÇA ---
 
 	if err := database.DB.Create(&input).Error; err != nil {
@@ -72,8 +74,8 @@ func CreateTransacao(c *gin.Context) {
 
 // UpdateTransacao - PUT /transacoes/:id
 func UpdateTransacao(c *gin.Context) {
-	// --- MUDANÇA ---
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
@@ -81,11 +83,13 @@ func UpdateTransacao(c *gin.Context) {
 
 	id := c.Param("id")
 	var transacao models.Transacao
-	// Verifica se a transação existe E pertence ao usuário
-	if err := database.DB.Where("id = ? AND usuario_id = ?", id, usuarioID).First(&transacao).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
+	// Verifica se a transação existe E pertence à família
+	// --- MUDANÇA: Usar familia_id ---
+	if err := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).First(&transacao).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada ou não pertence à família"})
 		return
 	}
+	// --- FIM DA MUDANÇA ---
 
 	var input models.Transacao
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -93,7 +97,7 @@ func UpdateTransacao(c *gin.Context) {
 		return
 	}
 
-	// Atualiza campos (garante que o ID do usuário não mude)
+	// Atualiza campos (garante que o ID da família não mude)
 	transacao.Nome = input.Nome
 	transacao.Valor = input.Valor
 	transacao.CategoriaID = input.CategoriaID
@@ -111,8 +115,8 @@ func UpdateTransacao(c *gin.Context) {
 
 // UpdateTransacaoStatus - PATCH /transacoes/:id/status
 func UpdateTransacaoStatus(c *gin.Context) {
-	// --- MUDANÇA ---
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
@@ -127,17 +131,19 @@ func UpdateTransacaoStatus(c *gin.Context) {
 		return
 	}
 
-	// Atualiza o status apenas se a transação pertencer ao usuário
+	// Atualiza o status apenas se a transação pertencer à família
+	// --- MUDANÇA: Usar familia_id ---
 	result := database.DB.Model(&models.Transacao{}).
-		Where("id = ? AND usuario_id = ?", id, usuarioID).
+		Where("id = ? AND familia_id = ?", id, familiaID).
 		Update("status", input.Status)
+	// --- FIM DA MUDANÇA ---
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
 	}
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada ou não pertence à família"})
 		return
 	}
 
@@ -146,23 +152,25 @@ func UpdateTransacaoStatus(c *gin.Context) {
 
 // DeleteTransacao - DELETE /transacoes/:id
 func DeleteTransacao(c *gin.Context) {
-	// --- MUDANÇA ---
-	usuarioID, ok := getUsuarioIDFromContext(c)
+	// --- MUDANÇA: Usar FamiliaID ---
+	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
 	// --- FIM DA MUDANÇA ---
 
 	id := c.Param("id")
-	// Usa GORM para deletar (soft delete) apenas se pertencer ao usuário
-	result := database.DB.Where("id = ? AND usuario_id = ?", id, usuarioID).Delete(&models.Transacao{})
+	// Usa GORM para deletar (soft delete) apenas se pertencer à família
+	// --- MUDANÇA: Usar familia_id ---
+	result := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).Delete(&models.Transacao{})
+	// --- FIM DA MUDANÇA ---
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
 	}
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada ou não pertence à família"})
 		return
 	}
 
