@@ -11,8 +11,12 @@ import (
 
 // GetDashboardSumario - GET /dashboard/sumario
 func GetDashboardSumario(c *gin.Context) {
-	// TODO: Pegar usuario_id do token JWT
-	usuarioID := 1 // Placeholder
+	// --- MUDANÇA ---
+	usuarioID, ok := getUsuarioIDFromContext(c)
+	if !ok {
+		return
+	}
+	// --- FIM DA MUDANÇA ---
 
 	mesStr := c.Query("mes")
 	anoStr := c.Query("ano")
@@ -48,11 +52,12 @@ func GetDashboardSumario(c *gin.Context) {
 
 // GetDashboardPizzaCategorias - GET /dashboard/pizza-categorias
 func GetDashboardPizzaCategorias(c *gin.Context) {
-	// TODO: Pegar usuario_id do token JWT
+	// --- MUDANÇA ---
 	usuarioID, ok := getUsuarioIDFromContext(c)
 	if !ok {
-		return // A função helper já enviou a resposta de erro
+		return
 	}
+	// --- FIM DA MUDANÇA ---
 
 	mesStr := c.Query("mes")
 	anoStr := c.Query("ano")
@@ -81,6 +86,68 @@ func GetDashboardPizzaCategorias(c *gin.Context) {
 
 // GetDashboardColunasBalanco - GET /dashboard/colunas-balanco
 func GetDashboardColunasBalanco(c *gin.Context) {
-	// ... Implementação do balanço anual (consulta mais complexa, agrupando por mês) ...
-	c.JSON(http.StatusOK, gin.H{"message": "Endpoint de balanço anual a ser implementado"})
+	// --- MUDANÇA ---
+	usuarioID, ok := getUsuarioIDFromContext(c)
+	if !ok {
+		return
+	}
+	// --- FIM DA MUDANÇA ---
+
+	anoStr := c.Query("ano")
+	ano, _ := strconv.Atoi(anoStr)
+
+	type ResultadoColuna struct {
+		Mes     string  `json:"mes"`
+		Receita float64 `json:"receita"`
+		Despesa float64 `json:"despesa"`
+	}
+	var resultados []ResultadoColuna
+	// Mapeia o número do mês para o nome abreviado em Português
+	mesesPtBr := [...]string{"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"}
+
+	// Cria uma estrutura de "template" para os 12 meses com valores zerados
+	resultadosMap := make(map[int]ResultadoColuna)
+	for i := 1; i <= 12; i++ {
+		resultadosMap[i] = ResultadoColuna{
+			Mes:     mesesPtBr[i-1], // 'Jan', 'Fev', etc.
+			Receita: 0,
+			Despesa: 0,
+		}
+	}
+
+	// Estrutura temporária para receber os dados do banco
+	type ResultadoQuery struct {
+		MesNum  int     `json:"mes_num"`
+		Receita float64 `json:"receita"`
+		Despesa float64 `json:"despesa"`
+	}
+	var queryResults []ResultadoQuery
+
+	// Busca os dados agregados do banco
+	database.DB.Table("transacoes").
+		Select("EXTRACT(MONTH FROM data_transacao) AS mes_num, "+
+			"SUM(CASE WHEN tipo = 'receita' THEN valor ELSE 0 END) AS receita, "+
+			"SUM(CASE WHEN tipo = 'despesa' THEN valor ELSE 0 END) AS despesa").
+		Where("usuario_id = ? AND EXTRACT(YEAR FROM data_transacao) = ?", usuarioID, ano).
+		Group("EXTRACT(MONTH FROM data_transacao)").
+		Scan(&queryResults)
+
+	// Preenche o "template" com os dados reais do banco
+	for _, res := range queryResults {
+		if res.MesNum >= 1 && res.MesNum <= 12 {
+			mes := res.MesNum
+			resultadosMap[mes] = ResultadoColuna{
+				Mes:     mesesPtBr[mes-1],
+				Receita: res.Receita,
+				Despesa: res.Despesa,
+			}
+		}
+	}
+
+	// Converte o map para um slice (array) na ordem correta
+	for i := 1; i <= 12; i++ {
+		resultados = append(resultados, resultadosMap[i])
+	}
+
+	c.JSON(http.StatusOK, resultados)
 }

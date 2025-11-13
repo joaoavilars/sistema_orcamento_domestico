@@ -11,35 +11,30 @@ import (
 )
 
 // GetTransacoes - GET /transacoes
-// Filtra por ?mes=10&ano=2025
 func GetTransacoes(c *gin.Context) {
-	// TODO: Pegar usuario_id do token JWT
+	// --- MUDANÇA ---
 	usuarioID, ok := getUsuarioIDFromContext(c)
 	if !ok {
-		return // A função helper já enviou a resposta de erro
+		return // Erro já enviado
 	}
+	// --- FIM DA MUDANÇA ---
 
 	mesStr := c.Query("mes")
 	anoStr := c.Query("ano")
-
 	if mesStr == "" || anoStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Parâmetros 'mes' e 'ano' são obrigatórios"})
 		return
 	}
-
 	mes, _ := strconv.Atoi(mesStr)
 	ano, _ := strconv.Atoi(anoStr)
-
-	// Calcula o primeiro e último dia do mês
 	primeiroDia := time.Date(ano, time.Month(mes), 1, 0, 0, 0, 0, time.UTC)
 	ultimoDia := primeiroDia.AddDate(0, 1, -1)
 
 	var transacoes []models.Transacao
 
-	// Usamos Preload("Categoria") para carregar os dados da categoria junto (Eager Loading)
 	result := database.DB.
 		Preload("Categoria").
-		Where("usuario_id = ?", usuarioID).
+		Where("usuario_id = ?", usuarioID). // <-- Agora usa o ID correto
 		Where("data_transacao BETWEEN ? AND ?", primeiroDia, ultimoDia).
 		Order("data_transacao DESC").
 		Find(&transacoes)
@@ -48,7 +43,6 @@ func GetTransacoes(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, transacoes)
 }
 
@@ -60,28 +54,35 @@ func CreateTransacao(c *gin.Context) {
 		return
 	}
 
-	// TODO: Pegar usuario_id do token JWT
-	input.UsuarioID = 1 // Placeholder
+	// --- MUDANÇA ---
+	usuarioID, ok := getUsuarioIDFromContext(c)
+	if !ok {
+		return
+	}
+	input.UsuarioID = usuarioID // <-- Define o dono
+	// --- FIM DA MUDANÇA ---
 
-	// Salva no banco
 	if err := database.DB.Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Recarrega para incluir a Categoria
 	database.DB.Preload("Categoria").First(&input, input.ID)
-
 	c.JSON(http.StatusCreated, input)
 }
 
 // UpdateTransacao - PUT /transacoes/:id
 func UpdateTransacao(c *gin.Context) {
-	id := c.Param("id")
-	// TODO: Verificar se a transação pertence ao usuário logado
+	// --- MUDANÇA ---
+	usuarioID, ok := getUsuarioIDFromContext(c)
+	if !ok {
+		return
+	}
+	// --- FIM DA MUDANÇA ---
 
+	id := c.Param("id")
 	var transacao models.Transacao
-	if err := database.DB.First(&transacao, id).Error; err != nil {
+	// Verifica se a transação existe E pertence ao usuário
+	if err := database.DB.Where("id = ? AND usuario_id = ?", id, usuarioID).First(&transacao).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
 		return
 	}
@@ -92,7 +93,7 @@ func UpdateTransacao(c *gin.Context) {
 		return
 	}
 
-	// Atualiza os campos
+	// Atualiza campos (garante que o ID do usuário não mude)
 	transacao.Nome = input.Nome
 	transacao.Valor = input.Valor
 	transacao.CategoriaID = input.CategoriaID
@@ -104,47 +105,64 @@ func UpdateTransacao(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	database.DB.Preload("Categoria").First(&transacao, transacao.ID)
 	c.JSON(http.StatusOK, transacao)
 }
 
 // UpdateTransacaoStatus - PATCH /transacoes/:id/status
 func UpdateTransacaoStatus(c *gin.Context) {
-	id := c.Param("id")
-	// TODO: Verificar se a transação pertence ao usuário logado
+	// --- MUDANÇA ---
+	usuarioID, ok := getUsuarioIDFromContext(c)
+	if !ok {
+		return
+	}
+	// --- FIM DA MUDANÇA ---
 
+	id := c.Param("id")
 	var input struct {
 		Status string `json:"status" binding:"required"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status é obrigatório"})
 		return
 	}
 
-	var transacao models.Transacao
-	if err := database.DB.First(&transacao, id).Error; err != nil {
+	// Atualiza o status apenas se a transação pertencer ao usuário
+	result := database.DB.Model(&models.Transacao{}).
+		Where("id = ? AND usuario_id = ?", id, usuarioID).
+		Update("status", input.Status)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
+	}
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
 		return
 	}
 
-	if err := database.DB.Model(&transacao).Update("status", input.Status).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, transacao)
+	c.JSON(http.StatusOK, gin.H{"message": "Status atualizado"})
 }
 
 // DeleteTransacao - DELETE /transacoes/:id
 func DeleteTransacao(c *gin.Context) {
-	id := c.Param("id")
-	// TODO: Verificar se a transação pertence ao usuário logado
+	// --- MUDANÇA ---
+	usuarioID, ok := getUsuarioIDFromContext(c)
+	if !ok {
+		return
+	}
+	// --- FIM DA MUDANÇA ---
 
-	// Usamos soft delete (GORM já faz isso se o model tiver gorm.DeletedAt)
-	if err := database.DB.Delete(&models.Transacao{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	id := c.Param("id")
+	// Usa GORM para deletar (soft delete) apenas se pertencer ao usuário
+	result := database.DB.Where("id = ? AND usuario_id = ?", id, usuarioID).Delete(&models.Transacao{})
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
 		return
 	}
 

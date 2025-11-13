@@ -40,7 +40,7 @@ const TransacaoItem = ({ transacao, isLast }) => {
 
       {/* Infos */}
       <div className="flex-1">
-        <p className="text-base font-medium text-gray-800">{transacao.nome}</p>
+        <p className="text-base font-medium text-gray-800 dark:text-gray-200">{transacao.nome}</p>
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <span 
             className="px-2 py-0.5 rounded-full text-xs font-medium"
