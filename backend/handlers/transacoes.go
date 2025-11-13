@@ -12,12 +12,10 @@ import (
 
 // GetTransacoes - GET /transacoes
 func GetTransacoes(c *gin.Context) {
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
-		return // A função helper já enviou a resposta de erro
+		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	mesStr := c.Query("mes")
 	anoStr := c.Query("ano")
@@ -34,9 +32,7 @@ func GetTransacoes(c *gin.Context) {
 
 	result := database.DB.
 		Preload("Categoria").
-		// --- MUDANÇA: Usar familia_id ---
 		Where("familia_id = ?", familiaID).
-		// --- FIM DA MUDANÇA ---
 		Where("data_transacao BETWEEN ? AND ?", primeiroDia, ultimoDia).
 		Order("data_transacao DESC").
 		Find(&transacoes)
@@ -56,13 +52,11 @@ func CreateTransacao(c *gin.Context) {
 		return
 	}
 
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	input.FamiliaID = familiaID // Define a dona da transação (usa FamiliaID)
-	// --- FIM DA MUDANÇA ---
+	input.FamiliaID = familiaID // Define a dona
 
 	if err := database.DB.Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -74,22 +68,19 @@ func CreateTransacao(c *gin.Context) {
 
 // UpdateTransacao - PUT /transacoes/:id
 func UpdateTransacao(c *gin.Context) {
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	id := c.Param("id")
 	var transacao models.Transacao
+
 	// Verifica se a transação existe E pertence à família
-	// --- MUDANÇA: Usar familia_id ---
 	if err := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).First(&transacao).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada ou não pertence à família"})
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	var input models.Transacao
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -115,12 +106,10 @@ func UpdateTransacao(c *gin.Context) {
 
 // UpdateTransacaoStatus - PATCH /transacoes/:id/status
 func UpdateTransacaoStatus(c *gin.Context) {
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	id := c.Param("id")
 	var input struct {
@@ -132,11 +121,9 @@ func UpdateTransacaoStatus(c *gin.Context) {
 	}
 
 	// Atualiza o status apenas se a transação pertencer à família
-	// --- MUDANÇA: Usar familia_id ---
 	result := database.DB.Model(&models.Transacao{}).
 		Where("id = ? AND familia_id = ?", id, familiaID).
 		Update("status", input.Status)
-	// --- FIM DA MUDANÇA ---
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
@@ -152,18 +139,14 @@ func UpdateTransacaoStatus(c *gin.Context) {
 
 // DeleteTransacao - DELETE /transacoes/:id
 func DeleteTransacao(c *gin.Context) {
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	id := c.Param("id")
 	// Usa GORM para deletar (soft delete) apenas se pertencer à família
-	// --- MUDANÇA: Usar familia_id ---
 	result := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).Delete(&models.Transacao{})
-	// --- FIM DA MUDANÇA ---
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})

@@ -11,7 +11,7 @@ func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost", "http://localhost:3000"}
+	config.AllowOrigins = []string{"http://localhost", "http://localhost:3000"} // Ajuste para seu domínio em produção
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	r.Use(cors.New(config))
@@ -20,12 +20,9 @@ func SetupRouter() *gin.Engine {
 	api := r.Group("/api")
 	{
 		// --- ROTAS PÚBLICAS ---
-		// /api/login
 		api.POST("/login", handlers.LoginUser)
-		// A rota /api/register PÚBLICA foi REMOVIDA
 
 		// --- ROTAS PROTEGIDAS (Usuário Comum) ---
-		// Requer apenas login (AuthMiddleware)
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
@@ -37,8 +34,13 @@ func SetupRouter() *gin.Engine {
 			// Transações (Core)
 			protected.GET("/transacoes", handlers.GetTransacoes)
 			protected.POST("/transacoes", handlers.CreateTransacao)
-			// (Certifique-se de que os handlers de transacoes e dashboard
-			// usam getUsuarioIDFromContext(c) e não o ID=1)
+
+			// --- AS DUAS ROTAS QUE FALTAVAM ---
+			protected.PUT("/transacoes/:id", handlers.UpdateTransacao)
+			protected.DELETE("/transacoes/:id", handlers.DeleteTransacao)
+			// --- FIM DA CORREÇÃO ---
+
+			protected.PATCH("/transacoes/:id/status", handlers.UpdateTransacaoStatus)
 
 			// Dashboard
 			protected.GET("/dashboard/sumario", handlers.GetDashboardSumario)
@@ -47,20 +49,20 @@ func SetupRouter() *gin.Engine {
 		}
 
 		// --- ROTAS DE ADMIN ---
-		// Requer login (AuthMiddleware) E ser admin (AdminMiddleware)
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 		{
 			// Usuários
 			admin.POST("/register", handlers.RegisterUser)
 			admin.GET("/users", handlers.ListUsers)
-			admin.PUT("/users/:id", handlers.UpdateUser) // <-- ADICIONE ESTA LINHA
+			admin.PUT("/users/:id", handlers.UpdateUser)
 			admin.DELETE("/users/:id", handlers.DeleteUser)
 
 			// Famílias
-			admin.GET("/familias", handlers.ListFamilias)   // <-- ADICIONE ESTA LINHA
-			admin.POST("/familias", handlers.CreateFamilia) // <-- ADICIONE ESTA LINHA
+			admin.GET("/familias", handlers.ListFamilias)
+			admin.POST("/familias", handlers.CreateFamilia)
 		}
 	}
+
 	return r
 }

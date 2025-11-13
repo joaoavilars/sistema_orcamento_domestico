@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
-// Este é um modal básico. Em produção, use uma lib como Headless UI ou Radix.
-const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
-  const [nome, setNome] = useState('');
-  const [valor, setValor] = useState('');
-  const [data, setData] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
-  const [categoriaId, setCategoriaId] = useState('');
-  const [status, setStatus] = useState('pendente');
-
+const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar }) => {
+  const [nome, setNome] = useState(transacaoParaEditar?.nome || '');
+  const [valor, setValor] = useState(transacaoParaEditar?.valor || '');
+  
+  const dataInicial = transacaoParaEditar?.data_transacao 
+    ? new Date(transacaoParaEditar.data_transacao).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+  
+  const [data, setData] = useState(dataInicial);
+  const [categoriaId, setCategoriaId] = useState(transacaoParaEditar?.categoria_id || '');
+  const [status, setStatus] = useState(transacaoParaEditar?.status || 'pendente');
+  
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const isEdicao = !!transacaoParaEditar;
 
-  // --- MUDANÇA PRINCIPAL AQUI ---
-  // Busca categorias da API real, e não mais do mock.
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
@@ -22,35 +26,50 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
         const cats = response.data || [];
         setCategorias(cats);
 
-        // Auto-seleciona a primeira categoria se ela existir
-        if (cats.length > 0) {
+        if (!isEdicao && cats.length > 0) {
           setCategoriaId(cats[0].id);
+        } else if (isEdicao && transacaoParaEditar.categoria_id) {
+            setCategoriaId(String(transacaoParaEditar.categoria_id));
         }
       } catch (err) {
         console.error("Erro ao buscar categorias para o modal:", err);
       }
     };
-
     fetchCategorias();
-  }, []); // O array vazio [] faz isso rodar 1x quando o modal é aberto.
+  }, [isEdicao, transacaoParaEditar]);
 
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    const tipoDaTransacao = isEdicao ? transacaoParaEditar.tipo : tipo;
+
     const payload = {
       nome,
       valor: parseFloat(valor),
-      data_transacao: new Date(data), // Envia como objeto Date
+      data_transacao: new Date(data),
       categoria_id: parseInt(categoriaId),
-      tipo: tipo,
-      status: tipo === 'receita' ? 'recebido' : status,
+      tipo: tipoDaTransacao,
+      status: tipoDaTransacao === 'receita' ? 'recebido' : status,
     };
+    
+    // Validação extra
+    if (!payload.nome || !payload.valor || !payload.categoria_id) {
+        setError("Nome, Valor e Categoria são obrigatórios.");
+        setLoading(false);
+        return;
+    }
 
     try {
-      const response = await api.post('/transacoes', payload);
-      onSuccess(response.data); // Retorna a nova transação
+      let response;
+      if (isEdicao) {
+        response = await api.put(`/transacoes/${transacaoParaEditar.id}`, payload);
+      } else {
+        response = await api.post('/transacoes', payload);
+      }
+      onSuccess(response.data, isEdicao);
     } catch (err) {
       setError('Erro ao salvar. Verifique os campos.');
       console.error(err);
@@ -59,17 +78,19 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
     }
   };
 
-  const title = tipo === 'receita' ? 'Nova Receita' : 'Nova Despesa';
+  const title = isEdicao 
+    ? 'Editar Transação' 
+    : (tipo === 'receita' ? 'Nova Receita' : 'Nova Despesa');
+
+  const tipoFinal = isEdicao ? transacaoParaEditar.tipo : tipo;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-      {/* ADICIONADO 'dark:bg-gray-800' AQUI */}
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
         
-        {/* ADICIONADO 'dark:border-gray-700' e 'dark:text-gray-200' */}
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
           <h3 className="text-xl font-semibold dark:text-gray-200">{title}</h3>
-          <button
+          <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
           >
@@ -80,11 +101,12 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && <p className="text-red-500 text-sm">{error}</p>}
           
+          {/* --- CAMPOS DO FORMULÁRIO (CORRIGIDOS) --- */}
           <div>
-            <label htmlFor="nome" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
+            <label htmlFor="nome-transacao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
             <input
               type="text"
-              id="nome"
+              id="nome-transacao"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
@@ -94,10 +116,10 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
           
           <div className="flex gap-4">
             <div className="flex-1">
-              <label htmlFor="valor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
+              <label htmlFor="valor-transacao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
               <input
                 type="number"
-                id="valor"
+                id="valor-transacao"
                 step="0.01"
                 min="0.01"
                 value={valor}
@@ -107,10 +129,10 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="data" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data</label>
+              <label htmlFor="data-transacao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data</label>
               <input
                 type="date"
-                id="data"
+                id="data-transacao"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
                 required
@@ -120,24 +142,27 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
           </div>
           
           <div>
-            <label htmlFor="categoria" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+            <label htmlFor="categoria-transacao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
             <select
-              id="categoria"
+              id="categoria-transacao"
               value={categoriaId}
               onChange={(e) => setCategoriaId(e.target.value)}
               required
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
             >
-              {categorias.length === 0 && (
-                <option disabled>Nenhuma categoria</option>
+              {categorias.length === 0 ? (
+                 <option disabled value="">Carregando...</option>
+              ) : (
+                <option value="">Selecione...</option> // Valor vazio para validação
               )}
               {categorias.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.nome}</option>
               ))}
             </select>
           </div>
+          {/* --- FIM DOS CAMPOS DO FORMULÁRIO --- */}
 
-          {tipo === 'despesa' && (
+          { tipoFinal === 'despesa' && (
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -150,17 +175,17 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
             </div>
           )}
           
+          {/* --- BOTÕES (CORRIGIDOS) --- */}
           <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
+            <button 
+              type="button" 
               onClick={onClose}
-              disabled={loading}
               className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
+            <button 
+              type="submit" 
               disabled={loading}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300"
             >
@@ -171,6 +196,6 @@ const ModalTransacao = ({ tipo, onClose, onSuccess }) => {
       </div>
     </div>
   );
-};
+}
 
 export default ModalTransacao;
