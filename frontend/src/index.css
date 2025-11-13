@@ -1,0 +1,17 @@
+/* Importa as diretivas base do Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* (Opcional) Estilos de base globais que respeitam o dark mode */
+@layer base {
+  body {
+    /* Define uma transição suave para as cores */
+    @apply bg-gray-100 text-gray-800 transition-colors duration-300;
+  }
+  
+  .dark body {
+    /* Cores do modo escuro */
+    @apply bg-gray-900 text-gray-200;
+  }
+}
