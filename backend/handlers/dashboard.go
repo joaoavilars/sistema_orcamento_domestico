@@ -6,17 +6,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	// --- A CORREÇÃO ESTÁ AQUI ---
 	"github.com/seu-usuario/orcamento-app/database"
 )
 
 // GetDashboardSumario - GET /dashboard/sumario
 func GetDashboardSumario(c *gin.Context) {
-	// --- MUDANÇA ---
 	usuarioID, ok := getUsuarioIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	mesStr := c.Query("mes")
 	anoStr := c.Query("ano")
@@ -27,14 +26,12 @@ func GetDashboardSumario(c *gin.Context) {
 
 	var totalReceitas, totalDespesas float64
 
-	// Total Receitas
 	database.DB.Table("transacoes").
 		Where("usuario_id = ? AND tipo = 'receita' AND data_transacao BETWEEN ? AND ?", usuarioID, primeiroDia, ultimoDia).
 		Select("COALESCE(SUM(valor), 0)").
 		Row().
 		Scan(&totalReceitas)
 
-	// Total Despesas
 	database.DB.Table("transacoes").
 		Where("usuario_id = ? AND tipo = 'despesa' AND data_transacao BETWEEN ? AND ?", usuarioID, primeiroDia, ultimoDia).
 		Select("COALESCE(SUM(valor), 0)").
@@ -52,12 +49,10 @@ func GetDashboardSumario(c *gin.Context) {
 
 // GetDashboardPizzaCategorias - GET /dashboard/pizza-categorias
 func GetDashboardPizzaCategorias(c *gin.Context) {
-	// --- MUDANÇA ---
 	usuarioID, ok := getUsuarioIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	mesStr := c.Query("mes")
 	anoStr := c.Query("ano")
@@ -86,12 +81,10 @@ func GetDashboardPizzaCategorias(c *gin.Context) {
 
 // GetDashboardColunasBalanco - GET /dashboard/colunas-balanco
 func GetDashboardColunasBalanco(c *gin.Context) {
-	// --- MUDANÇA ---
 	usuarioID, ok := getUsuarioIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	anoStr := c.Query("ano")
 	ano, _ := strconv.Atoi(anoStr)
@@ -102,20 +95,18 @@ func GetDashboardColunasBalanco(c *gin.Context) {
 		Despesa float64 `json:"despesa"`
 	}
 	var resultados []ResultadoColuna
-	// Mapeia o número do mês para o nome abreviado em Português
+
 	mesesPtBr := [...]string{"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"}
 
-	// Cria uma estrutura de "template" para os 12 meses com valores zerados
 	resultadosMap := make(map[int]ResultadoColuna)
 	for i := 1; i <= 12; i++ {
 		resultadosMap[i] = ResultadoColuna{
-			Mes:     mesesPtBr[i-1], // 'Jan', 'Fev', etc.
+			Mes:     mesesPtBr[i-1],
 			Receita: 0,
 			Despesa: 0,
 		}
 	}
 
-	// Estrutura temporária para receber os dados do banco
 	type ResultadoQuery struct {
 		MesNum  int     `json:"mes_num"`
 		Receita float64 `json:"receita"`
@@ -123,7 +114,6 @@ func GetDashboardColunasBalanco(c *gin.Context) {
 	}
 	var queryResults []ResultadoQuery
 
-	// Busca os dados agregados do banco
 	database.DB.Table("transacoes").
 		Select("EXTRACT(MONTH FROM data_transacao) AS mes_num, "+
 			"SUM(CASE WHEN tipo = 'receita' THEN valor ELSE 0 END) AS receita, "+
@@ -132,7 +122,6 @@ func GetDashboardColunasBalanco(c *gin.Context) {
 		Group("EXTRACT(MONTH FROM data_transacao)").
 		Scan(&queryResults)
 
-	// Preenche o "template" com os dados reais do banco
 	for _, res := range queryResults {
 		if res.MesNum >= 1 && res.MesNum <= 12 {
 			mes := res.MesNum
@@ -144,7 +133,6 @@ func GetDashboardColunasBalanco(c *gin.Context) {
 		}
 	}
 
-	// Converte o map para um slice (array) na ordem correta
 	for i := 1; i <= 12; i++ {
 		resultados = append(resultados, resultadosMap[i])
 	}

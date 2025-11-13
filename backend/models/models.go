@@ -25,6 +25,10 @@ type Categoria struct {
 	CorHex    string `gorm:"size:7" json:"cor_hex"`
 }
 
+func (Categoria) TableName() string {
+	return "categorias"
+}
+
 // Transacao (Transaction)
 type Transacao struct {
 	ID            uint           `gorm:"primaryKey" json:"id"`
@@ -38,6 +42,10 @@ type Transacao struct {
 	DataTransacao time.Time      `gorm:"type:date;not null" json:"data_transacao"`
 	CreatedAt     time.Time      `json:"created_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (Transacao) TableName() string {
+	return "transacoes"
 }
 
 // TransacaoRecorrente (Bonus)
