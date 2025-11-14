@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { TrashIcon } from '@heroicons/react/24/outline'; // <-- VERIFIQUE SE O ÍCONE FOI IMPORTADO
+import { TrashIcon, PencilIcon } from '@heroicons/react/24/outline'; // Importa PencilIcon
+
+// Importa o novo modal
+import ModalEditarCategoria from '../components/ModalEditarCategoria';
 
 const Categorias = () => {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [nome, setNome] = useState('');
-  const [cor, setCor] = useState('#FF0000');
+  const [cor, setCor] = useState('#FF0000'); // Cor padrão para novas
 
-  const [modalAberto, setModalAberto] = useState(false);
-  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState(null);
+  // Estados para os modais
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [categoriaParaAcao, setCategoriaParaAcao] = useState(null);
 
   const fetchCategorias = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/categorias');
       setCategorias(response.data || []);
@@ -26,74 +32,85 @@ const Categorias = () => {
     fetchCategorias();
   }, []);
 
+  // Handler para criar nova categoria
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nome || !cor) return;
-
     try {
       const novaCategoria = { nome, cor_hex: cor };
       const response = await api.post('/categorias', novaCategoria);
       setCategorias([...categorias, response.data]);
-      setNome(''); // Limpa o formulário
-      setCor('#FF0000'); // Reseta a cor
+      setNome('');
+      setCor('#FF0000');
     } catch (error) {
       console.error('Erro ao criar categoria:', error);
     }
   };
+
+  // --- Handlers para os Modais ---
+  const handleOpenDeleteModal = (categoria) => {
+    setCategoriaParaAcao(categoria);
+    setShowDeleteModal(true);
+  };
+
+  const handleOpenEditModal = (categoria) => {
+    setCategoriaParaAcao(categoria);
+    setShowEditModal(true);
+  };
   
-  // --- ADICIONE ESTA FUNÇÃO ---
-  const handleExcluirClick = (categoria) => {
-    setCategoriaParaExcluir(categoria);
-    setModalAberto(true);
-  };
-  // --- FIM DA ADIÇÃO ---
-
-  const cancelarExclusao = () => {
-    setCategoriaParaExcluir(null);
-    setModalAberto(false);
+  const handleCloseModals = () => {
+    setCategoriaParaAcao(null);
+    setShowDeleteModal(false);
+    setShowEditModal(false);
   };
 
-  const confirmarExclusao = async () => {
-    if (!categoriaParaExcluir) return;
-
+  const handleConfirmDelete = async () => {
+    if (!categoriaParaAcao) return;
     try {
-      await api.delete(`/categorias/${categoriaParaExcluir.id}`);
-      // Remove a categoria da lista no state (UI)
+      await api.delete(`/categorias/${categoriaParaAcao.id}`);
       setCategorias(
-        categorias.filter((cat) => cat.id !== categoriaParaExcluir.id)
+        categorias.filter((cat) => cat.id !== categoriaParaAcao.id)
       );
-      cancelarExclusao();
+      handleCloseModals();
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
       alert(
         'Erro ao excluir. A categoria pode estar sendo usada em transações.'
       );
-      cancelarExclusao();
+      handleCloseModals();
     }
   };
+  
+  const handleEditSuccess = (categoriaAtualizada) => {
+    setCategorias(categorias.map(cat => 
+      cat.id === categoriaAtualizada.id ? categoriaAtualizada : cat
+    ));
+    handleCloseModals();
+  };
+  // --- Fim dos Handlers ---
 
   return (
-    <> {/* <-- ADICIONE O FRAGMENT AQUI */}
+    <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Coluna 1: Formulário de Nova Categoria */}
         <div className="md:col-span-1">
           <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
             Nova Categoria
           </h2>
-          <form
-            onSubmit={handleSubmit}
+          <form 
+            onSubmit={handleSubmit} 
             className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md space-y-4"
           >
-            <div>
-              <label
-                htmlFor="nome"
+             <div>
+              <label 
+                htmlFor="nome" 
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Nome
               </label>
               <input
-                type="text"
-                id="nome"
+                type="text" 
+                id="nome" 
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
@@ -101,23 +118,23 @@ const Categorias = () => {
               />
             </div>
             <div>
-              <label
-                htmlFor="cor"
+              <label 
+                htmlFor="cor" 
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Cor
               </label>
               <input
-                type="color" // Input de cor nativo do HTML
-                id="cor"
+                type="color" 
+                id="cor" 
                 value={cor}
                 onChange={(e) => setCor(e.target.value)}
                 required
-                className="mt-1 block w-full rounded-md"
+                className="mt-1 block w-full rounded-md h-10"
               />
             </div>
-            <button
-              type="submit"
+            <button 
+              type="submit" 
               className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
               Salvar
@@ -138,10 +155,7 @@ const Categorias = () => {
             ) : (
               <ul className="divide-y dark:divide-gray-700">
                 {categorias.map((cat) => (
-                  <li
-                    key={cat.id}
-                    className="p-4 flex items-center justify-between"
-                  >
+                  <li key={cat.id} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span
                         className="h-4 w-4 rounded-full"
@@ -149,12 +163,23 @@ const Categorias = () => {
                       ></span>
                       <span className="dark:text-gray-200">{cat.nome}</span>
                     </div>
-                    <button
-                      onClick={() => handleExcluirClick(cat)}
-                      className="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
+                    {/* Botões de Ação */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleOpenEditModal(cat)}
+                        className="text-gray-400 hover:text-indigo-500"
+                        title="Editar"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenDeleteModal(cat)}
+                        className="text-gray-400 hover:text-red-500"
+                        title="Excluir"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </li>
                 ))}
                 {categorias.length === 0 && (
@@ -168,8 +193,17 @@ const Categorias = () => {
         </div>
       </div>
 
-      {/* --- MODAL DE CONFIRMAÇÃO --- */}
-      {modalAberto && (
+      {/* --- Modal de Edição --- */}
+      {showEditModal && (
+        <ModalEditarCategoria
+          categoria={categoriaParaAcao}
+          onClose={handleCloseModals}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* --- Modal de Exclusão --- */}
+      {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm">
             <div className="p-6">
@@ -179,25 +213,22 @@ const Categorias = () => {
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 Tem certeza que deseja excluir a categoria "
                 <span className="font-bold">
-                  {categoriaParaExcluir?.nome}
+                  {categoriaParaAcao?.nome}
                 </span>
                 "?
               </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Isso não pode ser desfeito.
-              </p>
             </div>
             <div className="flex justify-end gap-3 bg-gray-50 dark:bg-gray-700 p-4 rounded-b-lg">
-              <button
-                type="button"
-                onClick={cancelarExclusao}
+              <button 
+                type="button" 
+                onClick={handleCloseModals} 
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
               >
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={confirmarExclusao}
+              <button 
+                type="button" 
+                onClick={handleConfirmDelete} 
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
                 Excluir
@@ -206,7 +237,7 @@ const Categorias = () => {
           </div>
         </div>
       )}
-    </> 
+    </>
   );
 };
 

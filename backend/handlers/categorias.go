@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"strconv" // Certifique-se que este import está presente
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/seu-usuario/orcamento-app/database"
@@ -11,15 +11,12 @@ import (
 
 // GetCategorias - GET /categorias
 func GetCategorias(c *gin.Context) {
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
-		return // A função helper já enviou a resposta de erro
+		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	var categorias []models.Categoria
-	// --- MUDANÇA: Usar familia_id ---
 	if err := database.DB.Where("familia_id = ?", familiaID).Find(&categorias).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -36,13 +33,11 @@ func CreateCategoria(c *gin.Context) {
 		return
 	}
 
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	input.FamiliaID = familiaID // Define a dona da categoria (usa FamiliaID)
-	// --- FIM DA MUDANÇA ---
+	input.FamiliaID = familiaID
 
 	if err := database.DB.Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -54,12 +49,10 @@ func CreateCategoria(c *gin.Context) {
 
 // DeleteCategoria - DELETE /categorias/:id
 func DeleteCategoria(c *gin.Context) {
-	// --- MUDANÇA: Usar FamiliaID ---
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
-	// --- FIM DA MUDANÇA ---
 
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -68,7 +61,6 @@ func DeleteCategoria(c *gin.Context) {
 		return
 	}
 
-	// --- MUDANÇA: Usar familia_id ---
 	result := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).Delete(&models.Categoria{})
 
 	if result.Error != nil {
@@ -82,4 +74,52 @@ func DeleteCategoria(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Categoria excluída com sucesso"})
+}
+
+// --- NOVA FUNÇÃO ADICIONADA ---
+
+// UpdateCategoria - PUT /categorias/:id
+func UpdateCategoria(c *gin.Context) {
+	familiaID, ok := getFamiliaIDFromContext(c)
+	if !ok {
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de categoria inválido"})
+		return
+	}
+
+	// Pega os novos dados (nome e cor) do corpo do JSON
+	var input struct {
+		Nome   string `json:"nome" binding:"required"`
+		CorHex string `json:"cor_hex" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nome e cor são obrigatórios"})
+		return
+	}
+
+	// Busca a categoria no banco
+	var categoria models.Categoria
+	if err := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).First(&categoria).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Categoria não encontrada ou não pertence à família"})
+		return
+	}
+
+	// Atualiza os campos
+	categoria.Nome = input.Nome
+	categoria.CorHex = input.CorHex
+
+	// Salva no banco
+	if err := database.DB.Save(&categoria).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao salvar atualização da categoria"})
+		return
+	}
+
+	// Retorna a categoria atualizada
+	c.JSON(http.StatusOK, categoria)
 }
