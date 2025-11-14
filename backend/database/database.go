@@ -55,7 +55,7 @@ func seedUser() {
 	// Se o banco estiver vazio, cria o admin
 	log.Println("Nenhum usuário encontrado, criando usuário admin padrão...")
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("J263726a*001"), bcrypt.DefaultCost) // Senha padrão
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost) // Senha padrão
 
 	defaultUser := models.Usuario{
 		Email:     "admin@admin.com", // Email do Admin
