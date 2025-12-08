@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/seu-usuario/orcamento-app/database"
 	"github.com/seu-usuario/orcamento-app/models"
+	"gorm.io/gorm"
 )
 
 // Helper para gerar um ID aleatório curto para o grupo
@@ -56,6 +57,33 @@ func GetTransacoes(c *gin.Context) {
 	c.JSON(http.StatusOK, transacoes)
 }
 
+// GetAnosDisponiveis - GET /transacoes/anos
+func GetAnosDisponiveis(c *gin.Context) {
+	familiaID, ok := getFamiliaIDFromContext(c)
+	if !ok {
+		return
+	}
+
+	var anos []int
+	err := database.DB.Model(&models.Transacao{}).
+		Where("familia_id = ?", familiaID).
+		Distinct("EXTRACT(YEAR FROM data_transacao)").
+		Order("EXTRACT(YEAR FROM data_transacao) ASC").
+		Pluck("EXTRACT(YEAR FROM data_transacao)", &anos).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(anos) == 0 {
+		anoAtual := time.Now().Year()
+		anos = []int{anoAtual, anoAtual + 1}
+	}
+
+	c.JSON(http.StatusOK, anos)
+}
+
 // CreateTransacao - POST /transacoes
 func CreateTransacao(c *gin.Context) {
 	type CreateInput struct {
@@ -75,17 +103,14 @@ func CreateTransacao(c *gin.Context) {
 		return
 	}
 
-	// Se for parcelado, gera um ID de grupo único
 	var groupID string
 	if input.IsParcelado && input.QtdParcelas > 1 {
 		groupID = generateGroupID()
 	}
 
-	// Caso simples: Não parcelado
 	if !input.IsParcelado || input.QtdParcelas < 2 {
 		transacao := input.Transacao
 		transacao.FamiliaID = familiaID
-		// Garante que group_id seja vazio se não for parcelado
 		transacao.GroupID = ""
 
 		if err := database.DB.Create(&transacao).Error; err != nil {
@@ -97,7 +122,6 @@ func CreateTransacao(c *gin.Context) {
 		return
 	}
 
-	// Caso Parcelado: Loop
 	var transacoesCriadas []models.Transacao
 	nomeOriginal := input.Nome
 	dataOriginal := input.DataTransacao
@@ -106,7 +130,7 @@ func CreateTransacao(c *gin.Context) {
 	for i := 0; i < input.QtdParcelas; i++ {
 		t := input.Transacao
 		t.FamiliaID = familiaID
-		t.GroupID = groupID // Todas compartilham o mesmo ID de grupo
+		t.GroupID = groupID
 
 		t.Nome = fmt.Sprintf("%s (%d/%d)", nomeOriginal, i+1, input.QtdParcelas)
 		t.DataTransacao = dataOriginal.AddDate(0, i, 0)
@@ -137,13 +161,11 @@ func UpdateTransacao(c *gin.Context) {
 	id := c.Param("id")
 	var transacaoOriginal models.Transacao
 
-	// Busca a transação original para pegar o GroupID e Data
 	if err := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).First(&transacaoOriginal).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
 		return
 	}
 
-	// Struct de entrada com campo extra 'edit_mode'
 	type UpdateInput struct {
 		models.Transacao
 		EditMode string `json:"edit_mode"` // "single" ou "future"
@@ -155,8 +177,6 @@ func UpdateTransacao(c *gin.Context) {
 		return
 	}
 
-	// Lógica de Atualização
-	// 1. Se for edição simples OU não tiver grupo, edita só ela
 	if input.EditMode != "future" || transacaoOriginal.GroupID == "" {
 		transacaoOriginal.Nome = input.Nome
 		transacaoOriginal.Valor = input.Valor
@@ -170,22 +190,14 @@ func UpdateTransacao(c *gin.Context) {
 			return
 		}
 	} else {
-		// 2. Edição em Lote ("Esta e futuras")
-		// Atualiza todas do mesmo grupo que tenham data >= data da original
-		// Nota: Não atualizamos o NOME e a DATA para não quebrar a sequência (x/y) e os meses.
-		// Atualizamos Valor, Categoria e Tipo.
-
 		result := database.DB.Model(&models.Transacao{}).
 			Where("group_id = ? AND familia_id = ? AND data_transacao >= ?", transacaoOriginal.GroupID, familiaID, transacaoOriginal.DataTransacao).
 			Updates(map[string]interface{}{
 				"valor":        input.Valor,
 				"categoria_id": input.CategoriaID,
 				"tipo":         input.Tipo,
-				// "status": input.Status, // Geralmente não queremos marcar todas as futuras como pagas ao editar uma
 			})
 
-		// A transação atual específica (a que foi clicada) DEVE receber todas as atualizações (incluindo status e data se mudou)
-		// O Updates acima já cuidou do valor/categoria. Vamos garantir a atual.
 		transacaoOriginal.Nome = input.Nome
 		transacaoOriginal.Valor = input.Valor
 		transacaoOriginal.CategoriaID = input.CategoriaID
@@ -202,9 +214,6 @@ func UpdateTransacao(c *gin.Context) {
 	database.DB.Preload("Categoria").First(&transacaoOriginal, transacaoOriginal.ID)
 	c.JSON(http.StatusOK, transacaoOriginal)
 }
-
-// ... (UpdateTransacaoStatus e DeleteTransacao continuam iguais, pois delete em lote é mais perigoso e não foi pedido) ...
-// Copie as funções UpdateTransacaoStatus e DeleteTransacao do arquivo anterior ou deixe como estão se já estiverem usando familiaID.
 
 // UpdateTransacaoStatus - PATCH /transacoes/:id/status
 func UpdateTransacaoStatus(c *gin.Context) {
@@ -232,17 +241,37 @@ func UpdateTransacaoStatus(c *gin.Context) {
 }
 
 // DeleteTransacao - DELETE /transacoes/:id
+// --- ATUALIZADA COM LÓGICA DE EXCLUSÃO EM LOTE ---
 func DeleteTransacao(c *gin.Context) {
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
 		return
 	}
+
 	id := c.Param("id")
-	result := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).Delete(&models.Transacao{})
+	deleteMode := c.Query("delete_mode") // Lê o parâmetro ?delete_mode=...
+
+	// Primeiro, precisamos buscar a transação para saber o GroupID e a Data
+	var transacao models.Transacao
+	if err := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).First(&transacao).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada ou não pertence à família"})
+		return
+	}
+
+	var result *gorm.DB
+
+	if deleteMode == "future" && transacao.GroupID != "" {
+		// Deletar esta e futuras do mesmo grupo
+		result = database.DB.Where("group_id = ? AND familia_id = ? AND data_transacao >= ?", transacao.GroupID, familiaID, transacao.DataTransacao).Delete(&models.Transacao{})
+	} else {
+		// Deletar apenas esta (padrão)
+		result = database.DB.Delete(&transacao)
+	}
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Transação excluída com sucesso"})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transação(ões) excluída(s) com sucesso"})
 }

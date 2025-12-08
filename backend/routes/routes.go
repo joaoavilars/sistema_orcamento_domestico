@@ -34,6 +34,7 @@ func SetupRouter() *gin.Engine {
 
 			// Transações (Core)
 			protected.GET("/transacoes", handlers.GetTransacoes)
+			protected.GET("/transacoes/anos", handlers.GetAnosDisponiveis)
 			protected.POST("/transacoes", handlers.CreateTransacao)
 
 			// --- AS DUAS ROTAS QUE FALTAVAM ---
@@ -47,6 +48,7 @@ func SetupRouter() *gin.Engine {
 			protected.GET("/dashboard/sumario", handlers.GetDashboardSumario)
 			protected.GET("/dashboard/pizza-categorias", handlers.GetDashboardPizzaCategorias)
 			protected.GET("/dashboard/colunas-balanco", handlers.GetDashboardColunasBalanco)
+
 		}
 
 		// --- ROTAS DE ADMIN ---
