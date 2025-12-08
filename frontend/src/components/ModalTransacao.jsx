@@ -19,6 +19,10 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar }) => {
   
   const isEdicao = !!transacaoParaEditar;
 
+  // Determina o tipo real da transação (se é edição ou criação)
+  const tipoFinal = isEdicao ? transacaoParaEditar.tipo : tipo;
+  const isReceita = tipoFinal === 'receita';
+
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
@@ -44,18 +48,15 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar }) => {
     setLoading(true);
     setError('');
 
-    const tipoDaTransacao = isEdicao ? transacaoParaEditar.tipo : tipo;
-
     const payload = {
       nome,
       valor: parseFloat(valor),
       data_transacao: new Date(data),
       categoria_id: parseInt(categoriaId),
-      tipo: tipoDaTransacao,
-      status: tipoDaTransacao === 'receita' ? 'recebido' : status,
+      tipo: tipoFinal,
+      status: status, // Agora usa o status definido pelo usuário (pendente/pago/recebido)
     };
     
-    // Validação extra
     if (!payload.nome || !payload.valor || !payload.categoria_id) {
         setError("Nome, Valor e Categoria são obrigatórios.");
         setLoading(false);
@@ -80,9 +81,14 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar }) => {
 
   const title = isEdicao 
     ? 'Editar Transação' 
-    : (tipo === 'receita' ? 'Nova Receita' : 'Nova Despesa');
+    : (isReceita ? 'Nova Receita' : 'Nova Despesa');
 
-  const tipoFinal = isEdicao ? transacaoParaEditar.tipo : tipo;
+  // Define o valor de "Concluído" baseado no tipo
+  const statusConcluido = isReceita ? 'recebido' : 'pago';
+  const labelCheckbox = isReceita ? 'Já foi recebido?' : 'Já foi pago?';
+
+  // Verifica se está marcado (status é pago ou recebido)
+  const isChecked = status === 'pago' || status === 'recebido';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
@@ -101,7 +107,6 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && <p className="text-red-500 text-sm">{error}</p>}
           
-          {/* --- CAMPOS DO FORMULÁRIO (CORRIGIDOS) --- */}
           <div>
             <label htmlFor="nome-transacao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
             <input
@@ -153,29 +158,29 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar }) => {
               {categorias.length === 0 ? (
                  <option disabled value="">Carregando...</option>
               ) : (
-                <option value="">Selecione...</option> // Valor vazio para validação
+                <option value="">Selecione...</option>
               )}
               {categorias.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.nome}</option>
               ))}
             </select>
           </div>
-          {/* --- FIM DOS CAMPOS DO FORMULÁRIO --- */}
 
-          { tipoFinal === 'despesa' && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="status"
-                checked={status === 'pago'}
-                onChange={(e) => setStatus(e.target.checked ? 'pago' : 'pendente')}
-                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-              />
-              <label htmlFor="status" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Já foi pago?</label>
-            </div>
-          )}
+          {/* --- CHECKBOX DE STATUS (AGORA APARECE PARA OS DOIS) --- */}
+          <div className="flex items-center pt-2">
+            <input
+              type="checkbox"
+              id="status"
+              checked={isChecked}
+              onChange={(e) => setStatus(e.target.checked ? statusConcluido : 'pendente')}
+              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+            />
+            <label htmlFor="status" className="ml-2 block text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none">
+              {labelCheckbox}
+            </label>
+          </div>
+          {/* ---------------------------------------------------- */}
           
-          {/* --- BOTÕES (CORRIGIDOS) --- */}
           <div className="flex justify-end gap-3 pt-4">
             <button 
               type="button" 

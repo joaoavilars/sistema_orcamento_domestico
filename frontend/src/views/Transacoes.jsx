@@ -1,14 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react'; // <-- Importa o 'useCallback'
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import ModalTransacao from '../components/ModalTransacao';
 import TransacaoItem from '../components/TransacaoItem';
 import FiltroMesAno from '../components/FiltroMesAno';
-import { PlusIcon } from '@heroicons/react/24/solid';
+// --- MUDANÇA: Importar ícones de seta (Chevron) e Funil ---
+import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 
 const Transacoes = () => {
   const [transacoes, setTransacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // Filtros
+  const [busca, setBusca] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  
+  // --- MUDANÇA: Estado para controlar a visibilidade dos filtros ---
+  const [showFilters, setShowFilters] = useState(false); 
+
+  // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTipo, setModalTipo] = useState('despesa');
   const [transacaoParaAcao, setTransacaoParaAcao] = useState(null);
@@ -18,7 +28,6 @@ const Transacoes = () => {
   const [mesFiltro, setMesFiltro] = useState(dataAtual.getMonth() + 1);
   const [anoFiltro, setAnoFiltro] = useState(dataAtual.getFullYear());
 
-  // --- FUNÇÃO "MEMORIZADA" COM useCallback ---
   const fetchTransacoes = useCallback(async () => {
     setLoading(true);
     try {
@@ -32,15 +41,28 @@ const Transacoes = () => {
     } finally {
       setLoading(false);
     }
-  }, [mesFiltro, anoFiltro]); // <-- Dependências do useCallback
-  // --- FIM DA CORREÇÃO ---
+  }, [mesFiltro, anoFiltro]);
 
-  // --- useEffect AGORA DEPENDE DA FUNÇÃO MEMORIZADA ---
   useEffect(() => {
     fetchTransacoes();
   }, [fetchTransacoes]);
-  // --- FIM DA CORREÇÃO ---
 
+  // Lógica de Filtragem
+  const transacoesFiltradas = transacoes.filter((t) => {
+    const matchBusca = t.nome.toLowerCase().includes(busca.toLowerCase());
+    const matchTipo = filtroTipo === 'todos' || t.tipo === filtroTipo;
+    let matchStatus = true;
+    if (filtroStatus !== 'todos') {
+      if (filtroStatus === 'pendente') {
+        matchStatus = t.status === 'pendente';
+      } else if (filtroStatus === 'pago') {
+        matchStatus = t.status === 'pago' || t.status === 'recebido';
+      }
+    }
+    return matchBusca && matchTipo && matchStatus;
+  });
+
+  // Handlers
   const handleOpenCreateModal = (tipo) => {
     setTransacaoParaAcao(null);
     setModalTipo(tipo);
@@ -98,48 +120,128 @@ const Transacoes = () => {
   return (
     <>
       <div className="container mx-auto">
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => handleOpenCreateModal('receita')}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Nova Receita
-          </button>
-          <button
-            onClick={() => handleOpenCreateModal('despesa')}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Nova Despesa
-          </button>
+        
+        {/* Cabeçalho Fixo */}
+        <div className="sticky top-16 z-40 bg-gray-50 dark:bg-gray-900 pt-4 pb-2 -mx-4 px-4 md:mx-0 md:px-0 transition-colors duration-200 shadow-sm">
+          
+          {/* Linha 1: Botões de Ação */}
+          <div className="flex gap-4 mb-4">
+            <button
+              onClick={() => handleOpenCreateModal('receita')}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition-colors text-sm font-medium flex-1 sm:flex-none"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Receita
+            </button>
+            <button
+              onClick={() => handleOpenCreateModal('despesa')}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-colors text-sm font-medium flex-1 sm:flex-none"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Despesa
+            </button>
+          </div>
+
+          <FiltroMesAno 
+            mes={mesFiltro}
+            setMes={setMesFiltro}
+            ano={anoFiltro}
+            setAno={setAnoFiltro}
+          />
+
+          {/* --- LINHA 3: BOTÃO TOGGLE DE FILTROS --- */}
+          <div className="mt-4">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              <FunnelIcon className="h-4 w-4" />
+              {showFilters ? 'Ocultar Filtros' : 'Filtrar e Buscar'}
+              {showFilters ? (
+                <ChevronUpIcon className="h-4 w-4" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+
+          {/* --- BARRA DE FILTROS (CONDICIONAL) --- */}
+          {showFilters && (
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-2 animate-fade-in-down">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1 md:w-40">
+                    <select
+                      value={filtroTipo}
+                      onChange={(e) => setFiltroTipo(e.target.value)}
+                      className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                      <option value="todos">Todos Tipos</option>
+                      <option value="receita">Receitas</option>
+                      <option value="despesa">Despesas</option>
+                    </select>
+                  </div>
+                  <div className="flex-1 md:w-40">
+                    <select
+                      value={filtroStatus}
+                      onChange={(e) => setFiltroStatus(e.target.value)}
+                      className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                      <option value="todos">Todos Status</option>
+                      <option value="pendente">Pendente</option>
+                      <option value="pago">Pago/Recebido</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* ------------------------------------- */}
+          
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-4 flex justify-between items-center border-b dark:border-gray-700 pb-2">
+            <span>Transações</span>
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
+              {transacoesFiltradas.length}
+            </span>
+          </h2>
         </div>
 
-        <FiltroMesAno 
-          mes={mesFiltro}
-          setMes={setMesFiltro}
-          ano={anoFiltro}
-          setAno={setAnoFiltro}
-        />
-
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Transações</h2>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        {/* Lista de Transações */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-20">
           <div className="flex flex-col">
             {loading ? (
-              <p className="p-4 text-center text-gray-500 dark:text-gray-400">Carregando...</p>
+              <p className="p-8 text-center text-gray-500 dark:text-gray-400 animate-pulse">Carregando transações...</p>
             ) : (
-              transacoes.map((trans, index) => (
-                <TransacaoItem 
-                  key={trans.id} 
-                  transacao={trans} 
-                  isLast={index === transacoes.length - 1}
-                  onEdit={handleOpenEditModal}
-                  onDelete={handleOpenDeleteModal}
-                />
-              ))
-            )}
-            {!loading && transacoes.length === 0 && (
-              <p className="p-4 text-center text-gray-500 dark:text-gray-400">Nenhuma transação encontrada para este período.</p>
+              transacoesFiltradas.length > 0 ? (
+                transacoesFiltradas.map((trans, index) => (
+                  <TransacaoItem 
+                    key={trans.id} 
+                    transacao={trans} 
+                    isLast={index === transacoesFiltradas.length - 1}
+                    onEdit={handleOpenEditModal}
+                    onDelete={handleOpenDeleteModal}
+                  />
+                ))
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500 dark:text-gray-400 text-lg">Nenhuma transação encontrada.</p>
+                  {transacoes.length > 0 && (
+                    <p className="text-sm text-gray-400 mt-1">Tente ajustar os filtros.</p>
+                  )}
+                </div>
+              )
             )}
           </div>
         </div>
