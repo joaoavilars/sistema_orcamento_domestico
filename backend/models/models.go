@@ -66,6 +66,7 @@ type Transacao struct {
 	Tipo          string         `gorm:"size:10;not null;check:tipo IN ('receita', 'despesa')" json:"tipo"`
 	Status        string         `gorm:"size:10;not null;default:'pendente'" json:"status"`
 	DataTransacao time.Time      `gorm:"type:date;not null" json:"data_transacao"`
+	GroupID       string         `gorm:"size:36;index" json:"group_id"`
 	CreatedAt     time.Time      `json:"created_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 

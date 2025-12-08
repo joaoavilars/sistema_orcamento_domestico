@@ -17,7 +17,8 @@ func GetCategorias(c *gin.Context) {
 	}
 
 	var categorias []models.Categoria
-	if err := database.DB.Where("familia_id = ?", familiaID).Find(&categorias).Error; err != nil {
+	// --- MUDANÇA AQUI: Adicionado .Order("nome ASC") ---
+	if err := database.DB.Where("familia_id = ?", familiaID).Order("nome ASC").Find(&categorias).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -75,8 +76,6 @@ func DeleteCategoria(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Categoria excluída com sucesso"})
 }
-
-// --- NOVA FUNÇÃO ADICIONADA ---
 
 // UpdateCategoria - PUT /categorias/:id
 func UpdateCategoria(c *gin.Context) {
