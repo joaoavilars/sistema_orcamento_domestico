@@ -45,8 +45,8 @@ const Navbar = () => {
   const mobileInactiveClass = "text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700";
 
   return (
-    // --- MUDANÇA AQUI: Adicionado 'sticky top-0 z-50' ---
-    <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 transition-colors duration-200">
+    // --- MUDANÇA: Adicionado 'print:hidden' ---
+    <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 transition-colors duration-200 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           

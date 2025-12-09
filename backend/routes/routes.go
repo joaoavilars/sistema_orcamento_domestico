@@ -35,6 +35,7 @@ func SetupRouter() *gin.Engine {
 			// Transações (Core)
 			protected.GET("/transacoes", handlers.GetTransacoes)
 			protected.GET("/transacoes/anos", handlers.GetAnosDisponiveis)
+			protected.GET("/transacoes/export", handlers.ExportTransacoes)
 			protected.POST("/transacoes", handlers.CreateTransacao)
 
 			// --- AS DUAS ROTAS QUE FALTAVAM ---

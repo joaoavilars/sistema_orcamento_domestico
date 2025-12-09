@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/csv"
 	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -274,4 +277,84 @@ func DeleteTransacao(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Transação(ões) excluída(s) com sucesso"})
+}
+func ExportTransacoes(c *gin.Context) {
+	familiaID, ok := getFamiliaIDFromContext(c)
+	if !ok {
+		return
+	}
+
+	mesStr := c.Query("mes")
+	anoStr := c.Query("ano")
+	if mesStr == "" || anoStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Parâmetros 'mes' e 'ano' são obrigatórios"})
+		return
+	}
+	mes, _ := strconv.Atoi(mesStr)
+	ano, _ := strconv.Atoi(anoStr)
+
+	primeiroDia := time.Date(ano, time.Month(mes), 1, 0, 0, 0, 0, time.UTC)
+	ultimoDia := primeiroDia.AddDate(0, 1, -1)
+
+	var transacoes []models.Transacao
+	result := database.DB.
+		Preload("Categoria").
+		Where("familia_id = ?", familiaID).
+		Where("data_transacao BETWEEN ? AND ?", primeiroDia, ultimoDia).
+		Order("data_transacao ASC").
+		Find(&transacoes)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
+	}
+
+	// --- GERAÇÃO DO CSV ---
+	b := &bytes.Buffer{}
+
+	// DICA PRO: Adiciona o BOM (Byte Order Mark) para o Excel reconhecer UTF-8 (Acentos)
+	b.Write([]byte{0xEF, 0xBB, 0xBF})
+
+	w := csv.NewWriter(b)
+	w.Comma = ';' // Ponto e vírgula é o separador padrão do Excel BR
+
+	// Cabeçalho
+	w.Write([]string{"Data", "Nome", "Categoria", "Tipo", "Valor", "Status"})
+
+	for _, t := range transacoes {
+		dataFmt := t.DataTransacao.Format("02/01/2006")
+
+		// Formata com 2 casas decimais (padrão americano: 1000.50)
+		valorFmt := fmt.Sprintf("%.2f", t.Valor)
+
+		// --- A CORREÇÃO MÁGICA ---
+		// Troca ponto por vírgula para o Excel BR entender como número (1000,50)
+		valorFmt = strings.Replace(valorFmt, ".", ",", 1)
+		// -------------------------
+
+		categoriaNome := "Sem Categoria"
+		if t.Categoria.ID != 0 {
+			categoriaNome = t.Categoria.Nome
+		}
+
+		w.Write([]string{
+			dataFmt,
+			t.Nome,
+			categoriaNome,
+			t.Tipo,
+			valorFmt, // Agora envia com vírgula
+			t.Status,
+		})
+	}
+	w.Flush()
+
+	if err := w.Error(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao gerar CSV"})
+		return
+	}
+
+	filename := fmt.Sprintf("transacoes_%02d_%d.csv", mes, ano)
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Data(http.StatusOK, "text/csv", b.Bytes())
 }
