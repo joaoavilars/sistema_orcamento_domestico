@@ -4,8 +4,8 @@ param (
 )
 
 # Configuration
-$DB_USER = "postgres"
-$DB_NAME = "sistema_orcamento"
+$DB_USER = "admin"
+$DB_NAME = "orcamento_db"
 
 # Check if file exists
 if (-not (Test-Path $BackupFile)) {

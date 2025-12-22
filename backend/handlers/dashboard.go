@@ -20,8 +20,8 @@ func GetDashboardSumario(c *gin.Context) {
 	ultimoDia := primeiroDia.AddDate(0, 1, -1)
 
 	var totalReceitas, totalDespesas float64
-	database.DB.Table("transacoes").Where("familia_id = ? AND tipo = 'receita' AND data_transacao BETWEEN ? AND ?", familiaID, primeiroDia, ultimoDia).Select("COALESCE(SUM(valor), 0)").Scan(&totalReceitas)
-	database.DB.Table("transacoes").Where("familia_id = ? AND tipo = 'despesa' AND data_transacao BETWEEN ? AND ?", familiaID, primeiroDia, ultimoDia).Select("COALESCE(SUM(valor), 0)").Scan(&totalDespesas)
+	database.DB.Table("transacoes").Where("familia_id = ? AND tipo = 'receita' AND data_transacao BETWEEN ? AND ? AND deleted_at IS NULL", familiaID, primeiroDia, ultimoDia).Select("COALESCE(SUM(valor), 0)").Scan(&totalReceitas)
+	database.DB.Table("transacoes").Where("familia_id = ? AND tipo = 'despesa' AND data_transacao BETWEEN ? AND ? AND deleted_at IS NULL", familiaID, primeiroDia, ultimoDia).Select("COALESCE(SUM(valor), 0)").Scan(&totalDespesas)
 
 	c.JSON(http.StatusOK, gin.H{"total_receitas": totalReceitas, "total_despesas": totalDespesas, "saldo": totalReceitas - totalDespesas})
 }
@@ -42,7 +42,7 @@ func GetDashboardPizzaCategorias(c *gin.Context) {
 		Cor   string  `json:"cor"`
 	}
 	var resultados []Res
-	database.DB.Table("transacoes AS t").Select("c.nome, c.cor_hex AS cor, SUM(t.valor) AS total").Joins("JOIN categorias AS c ON c.id = t.categoria_id").Where("t.familia_id = ? AND t.tipo = 'despesa' AND t.data_transacao BETWEEN ? AND ?", familiaID, primeiroDia, ultimoDia).Group("c.nome, c.cor_hex").Order("total DESC").Scan(&resultados)
+	database.DB.Table("transacoes AS t").Select("c.nome, c.cor_hex AS cor, SUM(t.valor) AS total").Joins("JOIN categorias AS c ON c.id = t.categoria_id").Where("t.familia_id = ? AND t.tipo = 'despesa' AND t.data_transacao BETWEEN ? AND ? AND t.deleted_at IS NULL", familiaID, primeiroDia, ultimoDia).Group("c.nome, c.cor_hex").Order("total DESC").Scan(&resultados)
 	c.JSON(http.StatusOK, resultados)
 }
 
@@ -71,7 +71,7 @@ func GetDashboardColunasBalanco(c *gin.Context) {
 		Despesa float64
 	}
 	var qRes []QueryRes
-	database.DB.Table("transacoes").Select("EXTRACT(MONTH FROM data_transacao) AS mes_num, SUM(CASE WHEN tipo='receita' THEN valor ELSE 0 END) AS receita, SUM(CASE WHEN tipo='despesa' THEN valor ELSE 0 END) AS despesa").Where("familia_id = ? AND EXTRACT(YEAR FROM data_transacao) = ?", familiaID, ano).Group("EXTRACT(MONTH FROM data_transacao)").Scan(&qRes)
+	database.DB.Table("transacoes").Select("EXTRACT(MONTH FROM data_transacao) AS mes_num, SUM(CASE WHEN tipo='receita' THEN valor ELSE 0 END) AS receita, SUM(CASE WHEN tipo='despesa' THEN valor ELSE 0 END) AS despesa").Where("familia_id = ? AND EXTRACT(YEAR FROM data_transacao) = ? AND deleted_at IS NULL", familiaID, ano).Group("EXTRACT(MONTH FROM data_transacao)").Scan(&qRes)
 
 	for _, r := range qRes {
 		if r.MesNum >= 1 && r.MesNum <= 12 {

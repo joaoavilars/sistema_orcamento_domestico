@@ -4,8 +4,8 @@ import ModalTransacao from '../components/ModalTransacao';
 import TransacaoItem from '../components/TransacaoItem';
 import FiltroMesAno from '../components/FiltroMesAno';
 import PrintButton from '../components/PrintButton';
-import ExportButton from '../components/ExportButton'; // <-- Importado
-import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
+import ExportButton from '../components/ExportButton';
+import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon, ChevronUpIcon, TagIcon } from '@heroicons/react/24/solid';
 
 const Transacoes = () => {
   const [transacoes, setTransacoes] = useState([]);
@@ -15,6 +15,10 @@ const Transacoes = () => {
   const [busca, setBusca] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroStatus, setFiltroStatus] = useState('todos');
+
+  const [categorias, setCategorias] = useState([]);
+  const [filtroCategorias, setFiltroCategorias] = useState([]);
+  const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   // Modais
@@ -64,11 +68,21 @@ const Transacoes = () => {
 
   useEffect(() => {
     fetchTransacoes();
+
+    // Buscar categorias para o filtro
+    api.get('/categorias').then(res => {
+      setCategorias(res.data || []);
+    }).catch(err => console.error("Erro ao buscar categorias:", err));
+
   }, [fetchTransacoes]);
 
   const transacoesFiltradas = transacoes.filter((t) => {
     const matchBusca = t.nome.toLowerCase().includes(busca.toLowerCase());
     const matchTipo = filtroTipo === 'todos' || t.tipo === filtroTipo;
+
+    // Filtro de Categorias (Multi-select)
+    const matchCategoria = filtroCategorias.length === 0 || filtroCategorias.includes(t.categoria_id);
+
     let matchStatus = true;
     if (filtroStatus !== 'todos') {
       if (filtroStatus === 'pendente') {
@@ -77,7 +91,7 @@ const Transacoes = () => {
         matchStatus = t.status === 'pago' || t.status === 'recebido';
       }
     }
-    return matchBusca && matchTipo && matchStatus;
+    return matchBusca && matchTipo && matchStatus && matchCategoria;
   });
 
   const handleOpenCreateModal = (tipo) => {
@@ -168,12 +182,11 @@ const Transacoes = () => {
               </button>
             </div>
 
-            {/* --- MUDANÇA: Botões de Ferramentas (Exportar e Imprimir) --- */}
+            {/* Botões de Ferramentas (Exportar e Imprimir) */}
             <div className="flex gap-2 print:hidden self-end sm:self-auto">
               <ExportButton mes={mesFiltro} ano={anoFiltro} />
               <PrintButton />
             </div>
-            {/* ----------------------------------------------------------- */}
           </div>
 
           <FiltroMesAno mes={mesFiltro} setMes={setMesFiltro} ano={anoFiltro} setAno={setAnoFiltro} />
@@ -210,8 +223,99 @@ const Transacoes = () => {
                   </div>
                 </div>
               </div>
+
+
+              {/* Filtro de Categorias (Multi-Select Customizado) */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categorias</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCatDropdownOpen(!isCatDropdownOpen)}
+                    className="relative w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 pl-3 pr-10 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <TagIcon className="h-5 w-5 text-gray-400" />
+                      {filtroCategorias.length === 0
+                        ? <span className="text-gray-500 dark:text-gray-400">Todas as categorias</span>
+                        : <span className="text-gray-900 dark:text-white">{filtroCategorias.length} selecionada(s)</span>
+                      }
+                    </span>
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                      <ChevronDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                    </span>
+                  </button>
+
+                  {isCatDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                      <div
+                        className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+                        onClick={() => setFiltroCategorias([])}
+                      >
+                        <span className={`block truncate ${filtroCategorias.length === 0 ? 'font-semibold' : 'font-normal'}`}>
+                          Todas
+                        </span>
+                      </div>
+                      {categorias.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+                          onClick={() => {
+                            setFiltroCategorias(prev => {
+                              if (prev.includes(cat.id)) {
+                                return prev.filter(id => id !== cat.id);
+                              } else {
+                                return [...prev, cat.id];
+                              }
+                            });
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={filtroCategorias.includes(cat.id)}
+                              readOnly
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-2"
+                            />
+                            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: cat.cor_hex }}></div>
+                            <span className={`block truncate ${filtroCategorias.includes(cat.id) ? 'font-semibold' : 'font-normal'}`}>
+                              {cat.nome}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Visualização das tags selecionadas */}
+                {filtroCategorias.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {categorias.filter(c => filtroCategorias.includes(c.id)).map(cat => (
+                      <span key={cat.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                        {cat.nome}
+                        <button
+                          type="button"
+                          onClick={() => setFiltroCategorias(prev => prev.filter(id => id !== cat.id))}
+                          className="ml-1.5 inline-flex items-center justify-center text-indigo-400 hover:text-indigo-500 focus:outline-none"
+                        >
+                          <span className="sr-only">Remover {cat.nome}</span>
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      onClick={() => setFiltroCategorias([])}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline mt-1"
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
+
 
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-4 flex justify-between items-center border-b dark:border-gray-700 pb-2 print:text-black print:border-gray-300">
             <span>Relatório de Transações</span>
@@ -244,10 +348,11 @@ const Transacoes = () => {
             )}
           </div>
         </div>
+
+
       </div>
 
       {isModalOpen && (
-
         <ModalTransacao
           transacaoParaEditar={transacaoParaAcao}
           tipo={modalTipo}
