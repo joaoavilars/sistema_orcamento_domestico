@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  SunIcon, 
-  MoonIcon, 
-  ArrowRightOnRectangleIcon, 
-  Bars3Icon, 
-  XMarkIcon  
+import {
+  SunIcon,
+  MoonIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { isAdmin, logout } from '../../services/authService';
 
@@ -14,7 +14,7 @@ const Navbar = () => {
     localStorage.getItem('theme') ||
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   );
-  
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const userIsAdmin = isAdmin();
 
@@ -49,7 +49,7 @@ const Navbar = () => {
     <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 transition-colors duration-200 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          
+
           <div className="flex items-center">
             <div className="flex items-center md:hidden">
               <button
@@ -72,6 +72,7 @@ const Navbar = () => {
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
                 <NavLink to="/transacoes" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Transações</NavLink>
+                <NavLink to="/busca" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Busca</NavLink>
                 <NavLink to="/dashboard" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Dashboard</NavLink>
                 <NavLink to="/categorias" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Categorias</NavLink>
                 {userIsAdmin && (
@@ -80,7 +81,7 @@ const Navbar = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <button onClick={toggleTheme} className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
               {theme === 'light' ? <MoonIcon className="h-6 w-6" /> : <SunIcon className="h-6 w-6" />}
@@ -95,6 +96,7 @@ const Navbar = () => {
       <div className={`md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`} id="mobile-menu">
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           <NavLink to="/transacoes" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Transações</NavLink>
+          <NavLink to="/busca" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Busca</NavLink>
           <NavLink to="/dashboard" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Dashboard</NavLink>
           <NavLink to="/categorias" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Categorias</NavLink>
           {userIsAdmin && (

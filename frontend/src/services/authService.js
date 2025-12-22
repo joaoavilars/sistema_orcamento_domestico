@@ -1,33 +1,24 @@
 import api from './api';
 
 export const TOKEN_KEY = "@orcamento-app-token";
-export const ROLE_KEY = "@orcamento-app-role"; // <-- Nova chave
+export const ROLE_KEY = "@orcamento-app-role";
+export const USER_KEY = "user"; // Para guardar infos do user
 
-// Atualiza o login para salvar o token E a role
 export const login = async (email, password) => {
   const response = await api.post('/login', { email, password });
   localStorage.setItem(TOKEN_KEY, response.data.token);
-  localStorage.setItem(ROLE_KEY, response.data.role); // <-- Salva a role
+  localStorage.setItem(ROLE_KEY, response.data.user.role);
+  localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
 };
 
 export const logout = () => {
   localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(ROLE_KEY); // <-- Remove a role
+  localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem('selectedFamily');
 };
 
-export const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-export const getRole = () => { // <-- Nova função
-  return localStorage.getItem(ROLE_KEY);
-};
-
-export const isLoggedIn = () => {
-  const token = getToken();
-  return !!token;
-};
-
-export const isAdmin = () => { // <-- Nova função
-  return getRole() === 'admin';
-};
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const getRole = () => localStorage.getItem(ROLE_KEY);
+export const isLoggedIn = () => !!getToken();
+export const isAdmin = () => getRole() === 'admin';

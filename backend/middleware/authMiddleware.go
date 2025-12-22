@@ -1,70 +1,96 @@
 package middleware
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"os"
-	"strings" // <-- Importa o pacote "strings"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/seu-usuario/orcamento-app/database" // Importa o database
-	"github.com/seu-usuario/orcamento-app/handlers"
-	"github.com/seu-usuario/orcamento-app/models" // Importa os models
+	"github.com/seu-usuario/orcamento-app/database"
+	"github.com/seu-usuario/orcamento-app/models"
 )
-
-var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-
-		// --- INÍCIO DO CÓDIGO FALTANTE ---
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token de autorização não fornecido"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token não fornecido"})
 			return
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Formato do token inválido"})
-			c.Abort()
-			return
-		}
-		// --- FIM DO CÓDIGO FALTANTE ---
+		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+		secret := os.Getenv("JWT_SECRET")
 
-		claims := &handlers.Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("método de assinatura inesperado")
+			}
+			return []byte(secret), nil
 		})
 
 		if err != nil || !token.Valid {
-			log.Println("Token inválido:", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido ou expirado"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token inválido"})
 			return
 		}
 
-		// --- MUDANÇA: BUSCAR FAMILIA ID ---
-		var user models.Usuario
-		if err := database.DB.First(&user, claims.UserID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário do token não encontrado"})
-			c.Abort()
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Erro nos claims"})
 			return
 		}
 
-		// Armazena ID do Usuário, Role e ID da Família no contexto
-		c.Set("usuarioID", user.ID)
-		c.Set("usuarioRole", user.Role)
+		// 1. Extrai UserID do token
+		userIDFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "ID do usuário não encontrado no token"})
+			return
+		}
+		userID := uint(userIDFloat)
 
-		if user.FamiliaID != nil {
-			c.Set("familiaID", *user.FamiliaID)
+		// Salva no contexto
+		c.Set("usuarioID", userID)
+
+		// 2. Lógica Multi-Família
+		headerFamiliaID := c.GetHeader("X-Familia-ID")
+		var familiaID uint
+
+		if headerFamiliaID != "" && headerFamiliaID != "undefined" && headerFamiliaID != "null" {
+			id, err := strconv.Atoi(headerFamiliaID)
+			if err == nil {
+				familiaID = uint(id)
+			}
+		}
+
+		// 3. Validação de Segurança
+		if familiaID > 0 {
+			var count int64
+			// Verifica na tabela de junção se o usuário pertence à família
+			database.DB.Table("user_familias").
+				Where("user_id = ? AND familia_id = ?", userID, familiaID).
+				Count(&count)
+
+			if count > 0 {
+				c.Set("familiaID", familiaID)
+			} else {
+				// Se o usuário é admin, ele pode acessar qualquer família (opcional, mas útil para debug)
+				// Vamos manter restrito por enquanto: se não é membro, 403.
+				// A MENOS que seja um admin tentando criar coisas globais, mas aqui é contexto de família.
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Acesso negado a esta família"})
+				return
+			}
 		} else {
-			// Se familia_id for nulo (ex: admin), colocamos 0
-			c.Set("familiaID", uint(0))
+			// Fallback: Tenta pegar a primeira família do usuário
+			var user models.User
+			// Preload é importante aqui
+			if err := database.DB.Preload("Familias").First(&user, userID).Error; err == nil {
+				if len(user.Familias) > 0 {
+					c.Set("familiaID", user.Familias[0].ID)
+				}
+			}
 		}
-		// --- FIM DA MUDANÇA ---
 
 		c.Next()
 	}

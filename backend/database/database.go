@@ -27,45 +27,62 @@ func Connect() {
 	log.Println("Conexão com o banco de dados estabelecida.")
 
 	// AutoMigrate
+	// Cria ou atualiza as tabelas com base nos modelos (structs)
 	err = DB.AutoMigrate(
-		&models.Usuario{},
+		&models.User{},    // Atualizado de Usuario para User
+		&models.Familia{}, // Nova tabela
 		&models.Categoria{},
 		&models.Transacao{},
-		&models.TransacaoRecorrente{},
+		// &models.TransacaoRecorrente{}, // Se ainda estiver usando
 	)
 	if err != nil {
 		log.Fatal("Falha ao rodar AutoMigrate: ", err)
 	}
 
 	log.Println("Migrations do banco de dados concluídas.")
+
+	// Chama a função para criar o admin padrão
 	seedUser()
 }
 
-// seedUser cria um usuário padrão (ID=1) se ele não existir
+// seedUser garante que o usuário admin exista
 func seedUser() {
-	var userCount int64
-	DB.Model(&models.Usuario{}).Count(&userCount)
+	// 1. Admin Default
+	ensureUser("Administrador", "admin@admin.com", "admin123", "admin")
 
-	// Se já existir qualquer usuário, não faz nada
-	if userCount > 0 {
-		log.Println("Usuários já existem no banco. Seeder de admin pulado.")
-		return
+	// 2. Usuário Solicitado (João)
+	ensureUser("João Ávila", "joao.avila.rs@gmail.com", "123456", "admin")
+}
+
+func ensureUser(nome, email, defaultPassword, role string) {
+	var user models.User
+	result := DB.Where("email = ?", email).First(&user)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			// Cria o user se não existir
+			log.Printf("Usuário %s não encontrado, criando...\n", email)
+			newUser := models.User{
+				Nome:     nome,
+				Email:    email,
+				Password: string(hashedPassword),
+				Role:     role,
+			}
+			if err := DB.Create(&newUser).Error; err != nil {
+				log.Printf("Falha ao criar usuário %s: %v\n", email, err)
+			} else {
+				log.Printf("Usuário '%s' criado com sucesso. Senha: '%s'\n", email, defaultPassword)
+			}
+		} else {
+			log.Printf("Erro ao verificar usuário %s: %v\n", email, result.Error)
+		}
+	} else {
+		// Se existir, reseta a senha (útil para correção rápida)
+		log.Printf("Usuário %s encontrado. Resetando senha...\n", email)
+		user.Password = string(hashedPassword)
+		DB.Save(&user)
+		log.Printf("Senha do usuário '%s' resetada para '%s'.\n", email, defaultPassword)
 	}
-
-	// Se o banco estiver vazio, cria o admin
-	log.Println("Nenhum usuário encontrado, criando usuário admin padrão...")
-
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost) // Senha padrão
-
-	defaultUser := models.Usuario{
-		Email:     "admin@admin.com", // Email do Admin
-		SenhaHash: string(hashedPassword),
-		Role:      "admin", // Define a Role
-	}
-
-	if err := DB.Create(&defaultUser).Error; err != nil {
-		log.Fatal("Falha ao criar usuário admin padrão: ", err)
-	}
-
-	log.Println("Usuário 'admin@admin.com' criado com sucesso.")
 }

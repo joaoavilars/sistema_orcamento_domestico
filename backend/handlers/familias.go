@@ -8,7 +8,6 @@ import (
 	"github.com/seu-usuario/orcamento-app/models"
 )
 
-// ListFamilias - GET /admin/familias
 func ListFamilias(c *gin.Context) {
 	var familias []models.Familia
 	if err := database.DB.Find(&familias).Error; err != nil {
@@ -18,16 +17,14 @@ func ListFamilias(c *gin.Context) {
 	c.JSON(http.StatusOK, familias)
 }
 
-// CreateFamilia - POST /admin/familias
 func CreateFamilia(c *gin.Context) {
 	var input models.Familia
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	if err := database.DB.Create(&input).Error; err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Erro ao criar família, nome pode já estar em uso"})
+		c.JSON(http.StatusConflict, gin.H{"error": "Erro ao criar família"})
 		return
 	}
 	c.JSON(http.StatusCreated, input)
