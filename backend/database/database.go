@@ -51,7 +51,7 @@ func seedUser() {
 	ensureUser("Administrador", "admin@admin.com", "admin123", "admin")
 
 	// 2. Usuário Solicitado (João)
-	ensureUser("João Ávila", "joao.avila.rs@gmail.com", "123456", "admin")
+	//ensureUser("João Ávila", "joao.avila.rs@gmail.com", "123456", "admin")
 }
 
 func ensureUser(nome, email, defaultPassword, role string) {
