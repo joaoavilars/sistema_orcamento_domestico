@@ -10,7 +10,7 @@ import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon, ChevronUpIc
 const Transacoes = () => {
   const [transacoes, setTransacoes] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Filtros
   const [busca, setBusca] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('todos');
@@ -22,7 +22,7 @@ const Transacoes = () => {
   const [modalTipo, setModalTipo] = useState('despesa');
   const [transacaoParaAcao, setTransacaoParaAcao] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteMode, setDeleteMode] = useState('single'); 
+  const [deleteMode, setDeleteMode] = useState('single');
 
   const dataAtual = new Date();
   const [mesFiltro, setMesFiltro] = useState(dataAtual.getMonth() + 1);
@@ -41,6 +41,25 @@ const Transacoes = () => {
     } finally {
       setLoading(false);
     }
+  }, [mesFiltro, anoFiltro]);
+
+  const dataPadraoModal = React.useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // Se estiver no mês/ano corrente, sugere o dia de hoje
+    if (mesFiltro === currentMonth && anoFiltro === currentYear) {
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // Caso contrário, sugere o dia 01 do mês do filtro
+    const m = String(mesFiltro).padStart(2, '0');
+    const a = String(anoFiltro);
+    return `${a}-${m}-01`;
   }, [mesFiltro, anoFiltro]);
 
   useEffect(() => {
@@ -71,7 +90,7 @@ const Transacoes = () => {
     setTransacaoParaAcao(transacao);
     setIsModalOpen(true);
   };
-  
+
   const handleOpenDeleteModal = (transacao) => {
     setTransacaoParaAcao(transacao);
     setDeleteMode('single');
@@ -87,11 +106,11 @@ const Transacoes = () => {
   const handleModalSuccess = (transacaoAtualizada, eraEdicao) => {
     if (eraEdicao) {
       if (transacaoAtualizada.group_id) {
-          fetchTransacoes();
+        fetchTransacoes();
       } else {
-          setTransacoes(transacoes.map(t => 
-            t.id === transacaoAtualizada.id ? transacaoAtualizada : t
-          ));
+        setTransacoes(transacoes.map(t =>
+          t.id === transacaoAtualizada.id ? transacaoAtualizada : t
+        ));
       }
     } else {
       const dataNovaTransacao = new Date(transacaoAtualizada.data_transacao);
@@ -100,27 +119,27 @@ const Transacoes = () => {
 
       if (mesNova === mesFiltro && anoNova === anoFiltro) {
         if (transacaoAtualizada.group_id) {
-            fetchTransacoes();
+          fetchTransacoes();
         } else {
-            const listaAtualizada = [...transacoes, transacaoAtualizada];
-            listaAtualizada.sort((a, b) => new Date(b.data_transacao) - new Date(a.data_transacao));
-            setTransacoes(listaAtualizada);
+          const listaAtualizada = [...transacoes, transacaoAtualizada];
+          listaAtualizada.sort((a, b) => new Date(b.data_transacao) - new Date(a.data_transacao));
+          setTransacoes(listaAtualizada);
         }
       }
     }
     handleCloseModals();
   };
-  
+
   const handleConfirmDelete = async () => {
     if (!transacaoParaAcao) return;
     try {
       await api.delete(`/transacoes/${transacaoParaAcao.id}`, {
-          params: { delete_mode: deleteMode }
+        params: { delete_mode: deleteMode }
       });
       if (deleteMode === 'future') {
-          fetchTransacoes();
+        fetchTransacoes();
       } else {
-          setTransacoes(transacoes.filter(t => t.id !== transacaoParaAcao.id));
+        setTransacoes(transacoes.filter(t => t.id !== transacaoParaAcao.id));
       }
       handleCloseModals();
     } catch (error) {
@@ -135,9 +154,9 @@ const Transacoes = () => {
   return (
     <>
       <div className="container mx-auto print:w-full print:max-w-none">
-        
+
         <div className="sticky top-16 z-40 bg-gray-50 dark:bg-gray-900 pt-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 transition-colors duration-200 shadow-sm print:static print:shadow-none print:bg-white print:pt-0">
-          
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             {/* Botões de Ação */}
             <div className="flex gap-4 print:hidden">
@@ -193,7 +212,7 @@ const Transacoes = () => {
               </div>
             </div>
           )}
-          
+
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-4 flex justify-between items-center border-b dark:border-gray-700 pb-2 print:text-black print:border-gray-300">
             <span>Relatório de Transações</span>
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full print:bg-gray-100 print:text-black">
@@ -209,9 +228,9 @@ const Transacoes = () => {
             ) : (
               transacoesFiltradas.length > 0 ? (
                 transacoesFiltradas.map((trans, index) => (
-                  <TransacaoItem 
-                    key={trans.id} 
-                    transacao={trans} 
+                  <TransacaoItem
+                    key={trans.id}
+                    transacao={trans}
                     isLast={index === transacoesFiltradas.length - 1}
                     onEdit={handleOpenEditModal}
                     onDelete={handleOpenDeleteModal}
@@ -228,14 +247,16 @@ const Transacoes = () => {
       </div>
 
       {isModalOpen && (
+
         <ModalTransacao
           transacaoParaEditar={transacaoParaAcao}
-          tipo={modalTipo} 
+          tipo={modalTipo}
           onClose={handleCloseModals}
           onSuccess={handleModalSuccess}
+          dataPadrao={dataPadraoModal}
         />
       )}
-      
+
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm">
@@ -243,17 +264,17 @@ const Transacoes = () => {
               <h3 className="text-lg font-semibold dark:text-gray-200">Confirmar Exclusão</h3>
               {isRecorrente ? (
                 <div className="mt-4 space-y-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Esta é uma transação parcelada (recorrente). Como deseja excluir?</p>
-                    <div className="space-y-2">
-                        <label className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <input type="radio" name="deleteMode" value="single" checked={deleteMode === 'single'} onChange={(e) => setDeleteMode(e.target.value)} className="text-red-600 focus:ring-red-500"/>
-                            <span className="ml-3 text-sm text-gray-700 dark:text-gray-200">Excluir apenas esta</span>
-                        </label>
-                        <label className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <input type="radio" name="deleteMode" value="future" checked={deleteMode === 'future'} onChange={(e) => setDeleteMode(e.target.value)} className="text-red-600 focus:ring-red-500"/>
-                            <span className="ml-3 text-sm text-gray-700 dark:text-gray-200">Excluir esta e futuras</span>
-                        </label>
-                    </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Esta é uma transação parcelada (recorrente). Como deseja excluir?</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <input type="radio" name="deleteMode" value="single" checked={deleteMode === 'single'} onChange={(e) => setDeleteMode(e.target.value)} className="text-red-600 focus:ring-red-500" />
+                      <span className="ml-3 text-sm text-gray-700 dark:text-gray-200">Excluir apenas esta</span>
+                    </label>
+                    <label className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <input type="radio" name="deleteMode" value="future" checked={deleteMode === 'future'} onChange={(e) => setDeleteMode(e.target.value)} className="text-red-600 focus:ring-red-500" />
+                      <span className="ml-3 text-sm text-gray-700 dark:text-gray-200">Excluir esta e futuras</span>
+                    </label>
+                  </div>
                 </div>
               ) : (
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Tem certeza que deseja excluir a transação "<span className="font-bold">{transacaoParaAcao?.nome}</span>"?</p>
