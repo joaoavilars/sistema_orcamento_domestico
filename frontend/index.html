@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,19 @@
     
     <link rel="apple-touch-icon" href="/logo192.png" />
     
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#1f2937" />
+    <script>
+      // Aplica o tema dark por padrão antes do React carregar
+      (function() {
+        const savedTheme = localStorage.getItem('theme');
+        const theme = savedTheme || 'dark'; // Dark como padrão
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
