@@ -19,7 +19,7 @@ COPY . .
 RUN yarn build
 
 # Stage 2: Serve with Nginx
-FROM nginx:stable-alpine
+FROM nginx:alpine
 
 # --- CORREÇÃO IMPORTANTE ---
 # Copia da pasta 'dist' (do Vite) e não 'build'

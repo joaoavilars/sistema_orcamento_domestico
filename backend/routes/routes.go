@@ -38,6 +38,7 @@ func SetupRouter() *gin.Engine {
 			protected.GET("/dashboard/sumario", handlers.GetDashboardSumario)
 			protected.GET("/dashboard/pizza-categorias", handlers.GetDashboardPizzaCategorias)
 			protected.GET("/dashboard/colunas-balanco", handlers.GetDashboardColunasBalanco)
+			protected.GET("/dashboard/categorias-anual", handlers.GetDashboardCategoriasAnual)
 		}
 
 		admin := api.Group("/admin")
