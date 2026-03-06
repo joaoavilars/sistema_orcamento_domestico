@@ -1,0 +1,6 @@
+# Refatoração dos Componentes do Frontend
+
+- [x] Analisar a pasta `src/components` (identificar gargalos, repetição, falhas de segurança)
+- [x] Criar plano conciso para refatorar para o padrão Controller/Service (separando UI da lógica)
+- [ ] Executar refatoração (extraindo classes Tailwind para sub-componentes)
+- [ ] Executar Lint e Validação (garantir tipagem TS e padrões de clean code)

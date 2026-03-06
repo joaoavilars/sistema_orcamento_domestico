@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -16,7 +16,7 @@ const formatDate = (dateString) => {
   return format(utcDate, "dd/MM/yyyy", { locale: ptBR });
 };
 
-const TransacaoItem = ({ transacao, isLast, onEdit, onDelete }) => {
+const TransacaoItem = ({ transacao, isLast, onEdit, onDelete, onTogglePago }) => {
   const isDespesa = transacao.tipo === 'despesa';
   const isPendente = transacao.status === 'pendente';
 
@@ -93,6 +93,20 @@ const TransacaoItem = ({ transacao, isLast, onEdit, onDelete }) => {
 
       {/* --- MUDANÇA: Esconder Botões na Impressão (print:hidden) --- */}
       <div className="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4 pl-2 sm:pl-4 border-l border-gray-200 dark:border-gray-700 print:hidden">
+        <button
+          onClick={() => onTogglePago(transacao)}
+          className={`p-1.5 sm:p-2 rounded-full transition-colors ${
+            isPendente
+              ? 'text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30'
+              : 'text-green-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30'
+          }`}
+          title={isPendente ? 'Marcar como Pago' : 'Marcar como Pendente'}
+        >
+          {isPendente
+            ? <CheckIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            : <CheckCircleIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+          }
+        </button>
         <button onClick={() => onEdit(transacao)} className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors" title="Editar">
           <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>

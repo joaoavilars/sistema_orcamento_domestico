@@ -34,6 +34,7 @@ func SetupRouter() *gin.Engine {
 			protected.PUT("/transacoes/:id", handlers.UpdateTransacao)
 			protected.DELETE("/transacoes/:id", handlers.DeleteTransacao)
 			protected.PATCH("/transacoes/:id/status", handlers.UpdateTransacaoStatus)
+			protected.POST("/transacoes/:id/transferir-proximo-mes", handlers.TransferirProximoMes)
 
 			protected.GET("/dashboard/sumario", handlers.GetDashboardSumario)
 			protected.GET("/dashboard/pizza-categorias", handlers.GetDashboardPizzaCategorias)

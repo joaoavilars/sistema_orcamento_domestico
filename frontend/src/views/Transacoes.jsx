@@ -7,6 +7,9 @@ import PrintButton from '../components/PrintButton';
 import ExportButton from '../components/ExportButton';
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon, ChevronUpIcon, TagIcon } from '@heroicons/react/24/solid';
 
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
 const Transacoes = () => {
   const [transacoes, setTransacoes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +97,16 @@ const Transacoes = () => {
     return matchBusca && matchTipo && matchStatus && matchCategoria;
   });
 
+  const temFiltroAtivo = busca !== '' || filtroTipo !== 'todos' || filtroStatus !== 'todos' || filtroCategorias.length > 0;
+
+  const totalReceitas = temFiltroAtivo
+    ? transacoesFiltradas.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + t.valor, 0)
+    : 0;
+  const totalDespesas = temFiltroAtivo
+    ? transacoesFiltradas.filter(t => t.tipo === 'despesa').reduce((sum, t) => sum + t.valor, 0)
+    : 0;
+  const totalLiquido = totalReceitas - totalDespesas;
+
   const handleOpenCreateModal = (tipo) => {
     setTransacaoParaAcao(null);
     setModalTipo(tipo);
@@ -160,6 +173,20 @@ const Transacoes = () => {
       console.error("Erro ao excluir transação:", error);
       alert("Erro ao excluir transação.");
       handleCloseModals();
+    }
+  };
+
+  const handleTogglePago = async (transacao) => {
+    const novoStatus = transacao.status === 'pendente'
+      ? (transacao.tipo === 'receita' ? 'recebido' : 'pago')
+      : 'pendente';
+    try {
+      await api.patch(`/transacoes/${transacao.id}/status`, { status: novoStatus });
+      setTransacoes(prev =>
+        prev.map(t => t.id === transacao.id ? { ...t, status: novoStatus } : t)
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
     }
   };
 
@@ -323,6 +350,27 @@ const Transacoes = () => {
               {transacoesFiltradas.length} ite{transacoesFiltradas.length !== 1 ? 'ns' : 'm'}
             </span>
           </h2>
+
+          {temFiltroAtivo && !loading && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 mt-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-lg text-sm print:hidden">
+              <span className="font-medium text-indigo-800 dark:text-indigo-200">Totais do filtro:</span>
+              {totalReceitas > 0 && (
+                <span className="text-green-700 dark:text-green-400 font-semibold">
+                  Receitas: +{formatCurrency(totalReceitas)}
+                </span>
+              )}
+              {totalDespesas > 0 && (
+                <span className="text-red-700 dark:text-red-400 font-semibold">
+                  Despesas: -{formatCurrency(totalDespesas)}
+                </span>
+              )}
+              {(totalReceitas > 0 || totalDespesas > 0) && (
+                <span className={`font-bold ${totalLiquido >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                  Saldo: {totalLiquido >= 0 ? '+' : ''}{formatCurrency(totalLiquido)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-20 print:shadow-none print:border print:border-gray-300">
@@ -338,6 +386,7 @@ const Transacoes = () => {
                     isLast={index === transacoesFiltradas.length - 1}
                     onEdit={handleOpenEditModal}
                     onDelete={handleOpenDeleteModal}
+                    onTogglePago={handleTogglePago}
                   />
                 ))
               ) : (

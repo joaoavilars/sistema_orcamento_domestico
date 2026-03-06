@@ -280,6 +280,41 @@ func DeleteTransacao(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Excluído com sucesso"})
 }
 
+func TransferirProximoMes(c *gin.Context) {
+	familiaID, ok := getFamiliaIDFromContext(c)
+	if !ok {
+		return
+	}
+	id := c.Param("id")
+
+	var transacao models.Transacao
+	if err := database.DB.Where("id = ? AND familia_id = ?", id, familiaID).First(&transacao).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transação não encontrada"})
+		return
+	}
+
+	// Verifica se a transação está pendente (dívida não paga)
+	if transacao.Status != "pendente" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Apenas transações pendentes podem ser transferidas"})
+		return
+	}
+
+	// Calcula a nova data: mesmo dia, mês seguinte
+	novaData := transacao.DataTransacao.AddDate(0, 1, 0)
+
+	// Atualiza a data da transação
+	transacao.DataTransacao = novaData
+
+	if err := database.DB.Save(&transacao).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Recarrega com relacionamentos
+	database.DB.Preload("Categoria").Preload("Usuario").First(&transacao, transacao.ID)
+	c.JSON(http.StatusOK, transacao)
+}
+
 func ExportTransacoes(c *gin.Context) {
 	familiaID, ok := getFamiliaIDFromContext(c)
 	if !ok {
