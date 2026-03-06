@@ -43,36 +43,36 @@ const TransacaoItem = ({ transacao, isLast, onEdit, onDelete, onTogglePago }) =>
   const textSecondaryClass = 'text-gray-600 dark:text-gray-400 print:text-gray-600';
 
   return (
-    <div 
+    <div
       className={`
-        flex items-center p-4 transition-colors 
-        ${rowBgClass} 
+        flex items-center px-3 py-2 transition-colors
+        ${rowBgClass}
         ${!isLast ? 'border-b border-gray-200 dark:border-gray-700 print:border-gray-300' : ''}
         hover:bg-gray-100 dark:hover:bg-gray-700/50 print:hover:bg-transparent
-        print:break-inside-avoid /* Evita quebrar a linha no meio de uma página */
+        print:break-inside-avoid
       `}
     >
-      <div 
-        className="w-1.5 h-12 rounded-full mr-3 sm:mr-4 shadow-sm flex-shrink-0 print:border print:border-gray-300" 
+      <div
+        className="w-1 h-8 rounded-full mr-2 sm:mr-3 shadow-sm flex-shrink-0 print:border print:border-gray-300"
         style={{ backgroundColor: corCategoria }}
       ></div>
 
       <div className="flex-1 min-w-0 mr-2">
-        <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate print:text-black print:whitespace-normal">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate print:text-black print:whitespace-normal">
           {transacao.nome}
         </p>
-        
-        <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs sm:text-sm ${textSecondaryClass}`}>
+
+        <div className={`flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-xs ${textSecondaryClass}`}>
           <span className="whitespace-nowrap">
             {formatDate(transacao.data_transacao)}
           </span>
           <span className="hidden sm:inline text-gray-300 dark:text-gray-600 print:text-gray-400">•</span>
-          <span 
-            className="px-2 py-0.5 rounded font-medium truncate max-w-full print:border print:border-gray-200 print:bg-transparent print:text-black"
-            style={{ 
-              backgroundColor: `${corCategoria}20`, 
+          <span
+            className="px-1.5 py-0 rounded font-medium truncate max-w-full print:border print:border-gray-200 print:bg-transparent print:text-black"
+            style={{
+              backgroundColor: `${corCategoria}20`,
               color: corCategoria,
-              filter: 'brightness(0.9)' 
+              filter: 'brightness(0.9)'
             }}
           >
             {transacao.categoria?.nome || 'Geral'}
@@ -81,21 +81,20 @@ const TransacaoItem = ({ transacao, isLast, onEdit, onDelete, onTogglePago }) =>
       </div>
 
       <div className="flex flex-col items-end">
-        <p className={`text-base sm:text-lg font-bold ${corValor} whitespace-nowrap`}>
+        <p className={`text-sm font-bold ${corValor} whitespace-nowrap`}>
           {valorFormatado}
         </p>
-        
-        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase mt-1 border ${statusBadgeClass}`}>
-          <StatusIcon className="h-3 w-3" />
+
+        <div className={`flex items-center gap-1 px-1.5 py-0 rounded-full text-[9px] font-bold uppercase mt-0.5 border ${statusBadgeClass}`}>
+          <StatusIcon className="h-2.5 w-2.5" />
           {transacao.status === 'recebido' ? 'Recebido' : transacao.status}
         </div>
       </div>
 
-      {/* --- MUDANÇA: Esconder Botões na Impressão (print:hidden) --- */}
-      <div className="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4 pl-2 sm:pl-4 border-l border-gray-200 dark:border-gray-700 print:hidden">
+      <div className="flex items-center gap-0.5 sm:gap-1 ml-1.5 sm:ml-3 pl-1.5 sm:pl-3 border-l border-gray-200 dark:border-gray-700 print:hidden">
         <button
           onClick={() => onTogglePago(transacao)}
-          className={`p-1.5 sm:p-2 rounded-full transition-colors ${
+          className={`p-1 sm:p-1.5 rounded-full transition-colors ${
             isPendente
               ? 'text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30'
               : 'text-green-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30'
@@ -103,15 +102,15 @@ const TransacaoItem = ({ transacao, isLast, onEdit, onDelete, onTogglePago }) =>
           title={isPendente ? 'Marcar como Pago' : 'Marcar como Pendente'}
         >
           {isPendente
-            ? <CheckIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-            : <CheckCircleIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            ? <CheckIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            : <CheckCircleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           }
         </button>
-        <button onClick={() => onEdit(transacao)} className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors" title="Editar">
-          <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+        <button onClick={() => onEdit(transacao)} className="p-1 sm:p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors" title="Editar">
+          <PencilIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </button>
-        <button onClick={() => onDelete(transacao)} className="p-1.5 sm:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors" title="Excluir">
-          <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+        <button onClick={() => onDelete(transacao)} className="p-1 sm:p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors" title="Excluir">
+          <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </button>
       </div>
     </div>

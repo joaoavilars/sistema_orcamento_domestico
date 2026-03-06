@@ -76,40 +76,39 @@ const FiltroMesAno = ({ mes, setMes, ano, setAno }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm mb-6 border border-gray-200 dark:border-gray-700">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        
+    <div className="bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm mb-3 border border-gray-200 dark:border-gray-700">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+
         {/* Navegação Rápida (Setas) */}
-        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-          <button 
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <button
             onClick={handleMesAnterior}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
             title="Mês Anterior"
           >
-            <ChevronLeftIcon className="h-5 w-5" />
+            <ChevronLeftIcon className="h-4 w-4" />
           </button>
-          
-          <span className="text-lg font-semibold text-gray-800 dark:text-gray-200 min-w-[140px] text-center">
+
+          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 min-w-[110px] text-center">
             {meses.find(m => m.valor === mes)?.nome} {ano}
           </span>
 
-          <button 
+          <button
             onClick={handleMesProximo}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
             title="Próximo Mês"
           >
-            <ChevronRightIcon className="h-5 w-5" />
+            <ChevronRightIcon className="h-4 w-4" />
           </button>
         </div>
 
         {/* Seletores Dropdown */}
         <div className="flex gap-2 w-full sm:w-auto">
-          <div className="w-1/2 sm:w-40">
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Mês</label>
+          <div className="w-1/2 sm:w-36">
             <select
               value={mes}
               onChange={(e) => setMes(parseInt(e.target.value))}
-              className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="block w-full py-1 px-2 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs"
             >
               {meses.map((m) => (
                 <option key={m.valor} value={m.valor}>
@@ -118,14 +117,13 @@ const FiltroMesAno = ({ mes, setMes, ano, setAno }) => {
               ))}
             </select>
           </div>
-          
-          <div className="w-1/2 sm:w-32">
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ano</label>
+
+          <div className="w-1/2 sm:w-24">
             <select
               value={ano}
               onChange={(e) => setAno(parseInt(e.target.value))}
               disabled={loading}
-              className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="block w-full py-1 px-2 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs"
             >
               {anosDisponiveis.map((a) => (
                 <option key={a} value={a}>
