@@ -8,6 +8,7 @@ import {
   CreditCardIcon,
   BuildingLibraryIcon,
   BanknotesIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/outline';
 
 const formatCurrency = (value) =>
@@ -17,11 +18,13 @@ const TIPO_LABEL = {
   dinheiro: 'Dinheiro',
   cartao: 'Cartão de Crédito',
   conta: 'Conta Bancária',
+  beneficio: 'Cartão Benefício',
 };
 
 const TipoIcon = ({ tipo, className = 'h-5 w-5' }) => {
   if (tipo === 'cartao') return <CreditCardIcon className={className} />;
   if (tipo === 'conta') return <BuildingLibraryIcon className={className} />;
+  if (tipo === 'beneficio') return <ShoppingBagIcon className={className} />;
   return <BanknotesIcon className={className} />;
 };
 
@@ -29,6 +32,7 @@ const TIPO_COLOR = {
   dinheiro: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
   cartao: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
   conta: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20',
+  beneficio: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20',
 };
 
 const ContaCard = ({ conta, isSelected, onClick }) => {
@@ -50,7 +54,7 @@ const ContaCard = ({ conta, isSelected, onClick }) => {
     >
       <div className="flex items-start justify-between gap-3">
         {/* Ícone + tipo */}
-        <div className={`p-2 rounded-md ${TIPO_COLOR[conta.tipo]}`}>
+        <div className={`p-2 rounded-md ${TIPO_COLOR[conta.tipo] || TIPO_COLOR.dinheiro}`}>
           <TipoIcon tipo={conta.tipo} className="h-5 w-5" />
         </div>
 

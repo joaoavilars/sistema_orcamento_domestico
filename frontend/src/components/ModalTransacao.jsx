@@ -79,6 +79,26 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
   const contaSelecionada = contas.find(c => String(c.id) === contaId);
   const isContaCorrente = contaSelecionada?.tipo === 'conta' && contaSelecionada?.tipo_conta === 'corrente';
   const isCartao = contaSelecionada?.tipo === 'cartao';
+  const isBeneficio = contaSelecionada?.tipo === 'beneficio';
+
+  // Débito e PIX são pagamentos imediatos — marcar como pago automaticamente
+  const handleFormaPagamentoChange = (e) => {
+    const forma = e.target.value;
+    setFormaPagamento(forma);
+    if (forma === 'debito' || forma === 'pix') {
+      setStatus(isReceita ? 'recebido' : 'pago');
+    }
+  };
+
+  // Ao selecionar conta benefício, o gasto é imediato (saldo descontado na hora)
+  const handleContaChange = (e) => {
+    const novaConta = contas.find(c => String(c.id) === e.target.value);
+    setContaId(e.target.value);
+    setFormaPagamento('');
+    if (novaConta?.tipo === 'beneficio') {
+      setStatus(isReceita ? 'recebido' : 'pago');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -273,10 +293,7 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
             label="Conta / Cartão (opcional)"
             id="conta"
             value={contaId}
-            onChange={(e) => {
-              setContaId(e.target.value);
-              setFormaPagamento('');
-            }}
+            onChange={handleContaChange}
             options={contas.map(c => ({ value: c.id, label: c.nome }))}
             placeholder="Sem vínculo de conta"
           />
@@ -285,7 +302,7 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
               label="Forma de Pagamento"
               id="formaPagamento"
               value={formaPagamento}
-              onChange={(e) => setFormaPagamento(e.target.value)}
+              onChange={handleFormaPagamentoChange}
               options={FORMA_PAGAMENTO_OPTIONS}
             />
           )}
@@ -296,6 +313,16 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
                 A transação será registrada automaticamente no <strong>mês seguinte</strong> como pendente — quando a fatura vence. O limite do cartão já é descontado imediatamente.
+              </p>
+            </div>
+          )}
+          {isBeneficio && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md px-3 py-2">
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                Cartão Benefício
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                O saldo é descontado imediatamente. A transação será marcada como <strong>paga</strong> automaticamente.
               </p>
             </div>
           )}

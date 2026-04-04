@@ -262,6 +262,8 @@ func UpdateTransacao(c *gin.Context) {
 		transacaoOriginal.DataTransacao = input.DataTransacao
 		transacaoOriginal.Status = input.Status
 		transacaoOriginal.Tipo = input.Tipo
+		transacaoOriginal.ContaID = input.ContaID
+		transacaoOriginal.FormaPagamento = input.FormaPagamento
 		if err := database.DB.Save(&transacaoOriginal).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
