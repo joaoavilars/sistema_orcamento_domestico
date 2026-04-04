@@ -40,6 +40,20 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	// Se houver um usuário soft-deleted com o mesmo email, remove permanentemente
+	// para liberar o índice único antes de criar o novo
+	var deletedUser models.User
+	if err := database.DB.Unscoped().Where("email = ? AND deleted_at IS NOT NULL", input.Email).First(&deletedUser).Error; err == nil {
+		database.DB.Unscoped().Delete(&deletedUser)
+	}
+
+	// Verificar se ainda existe usuário ativo com esse email
+	var existingUser models.User
+	if err := database.DB.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email já registrado por um usuário ativo"})
+		return
+	}
+
 	user := models.User{
 		Nome:     input.Nome,
 		Email:    input.Email,

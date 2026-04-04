@@ -6,6 +6,7 @@ import Transacoes from './views/Transacoes';
 import Busca from './views/Busca';
 import Dashboard from './views/Dashboard';
 import Categorias from './views/Categorias';
+import Contas from './views/Contas';
 import Usuarios from './views/Usuarios';
 
 // Views de Auth
@@ -45,6 +46,7 @@ function App() {
             <Route path="/busca" element={<Busca />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/categorias" element={<Categorias />} />
+            <Route path="/contas" element={<Contas />} />
             <Route path="/admin/usuarios" element={<Usuarios />} />
           </Route>
         </Route>

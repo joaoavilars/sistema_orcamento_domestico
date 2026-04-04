@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCategorias } from '../hooks/useCategorias';
 import { useTransacaoForm } from '../hooks/useTransacoes';
+import { contaService } from '../services/contaService';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -12,6 +13,12 @@ const formatCurrency = (value) => {
     currency: 'BRL',
   }).format(value);
 };
+
+const FORMA_PAGAMENTO_OPTIONS = [
+  { value: '', label: 'Padrão' },
+  { value: 'debito', label: 'Débito' },
+  { value: 'pix', label: 'PIX' },
+];
 
 const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPadrao }) => {
   const { categorias, loading: loadingCategorias } = useCategorias(true);
@@ -28,6 +35,11 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
 
   const [categoriaId, setCategoriaId] = useState(transacaoParaEditar?.categoria_id || '');
   const [status, setStatus] = useState(transacaoParaEditar?.status || 'pendente');
+
+  // Conta/Forma de pagamento
+  const [contas, setContas] = useState([]);
+  const [contaId, setContaId] = useState(transacaoParaEditar?.conta_id ? String(transacaoParaEditar.conta_id) : '');
+  const [formaPagamento, setFormaPagamento] = useState(transacaoParaEditar?.forma_pagamento || '');
 
   // Parcelamento
   const [isParcelado, setIsParcelado] = useState(false);
@@ -56,8 +68,22 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
     }
   }, [isEdicao, dataPadrao]);
 
+  useEffect(() => {
+    contaService.getAll().then(data => {
+      // Apenas contas ativas
+      setContas(data.filter(c => c.ativo));
+    }).catch(() => {});
+  }, []);
+
+  // Conta selecionada para saber se mostrar forma de pagamento
+  const contaSelecionada = contas.find(c => String(c.id) === contaId);
+  const isContaCorrente = contaSelecionada?.tipo === 'conta' && contaSelecionada?.tipo_conta === 'corrente';
+  const isCartao = contaSelecionada?.tipo === 'cartao';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const formaFinal = isCartao ? 'credito' : formaPagamento;
 
     const payload = {
       nome,
@@ -66,6 +92,8 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
       categoria_id: parseInt(categoriaId),
       tipo: tipoFinal,
       status: status,
+      conta_id: contaId ? parseInt(contaId) : null,
+      forma_pagamento: formaFinal,
       is_parcelado: !isEdicao && isParcelado,
       qtd_parcelas: parseInt(qtdParcelas),
       edit_mode: editMode
@@ -238,6 +266,40 @@ const ModalTransacao = ({ tipo, onClose, onSuccess, transacaoParaEditar, dataPad
           options={categoriaOptions}
           placeholder={loadingCategorias ? 'Carregando...' : 'Selecione...'}
         />
+
+        {/* Conta / Cartão */}
+        <div className="space-y-2">
+          <Select
+            label="Conta / Cartão (opcional)"
+            id="conta"
+            value={contaId}
+            onChange={(e) => {
+              setContaId(e.target.value);
+              setFormaPagamento('');
+            }}
+            options={contas.map(c => ({ value: c.id, label: c.nome }))}
+            placeholder="Sem vínculo de conta"
+          />
+          {isContaCorrente && (
+            <Select
+              label="Forma de Pagamento"
+              id="formaPagamento"
+              value={formaPagamento}
+              onChange={(e) => setFormaPagamento(e.target.value)}
+              options={FORMA_PAGAMENTO_OPTIONS}
+            />
+          )}
+          {isCartao && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md px-3 py-2">
+              <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                Compra no crédito
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                A transação será registrada automaticamente no <strong>mês seguinte</strong> como pendente — quando a fatura vence. O limite do cartão já é descontado imediatamente.
+              </p>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center pt-2">
           <input

@@ -134,12 +134,26 @@ func CreateTransacao(c *gin.Context) {
 		groupID = generateGroupID()
 	}
 
+	// Se a conta for cartão de crédito, avança a data para o mês seguinte
+	// (a fatura do cartão é paga no mês posterior à compra)
+	isCartao := false
+	if input.ContaID != nil {
+		var conta models.Conta
+		if err := database.DB.First(&conta, input.ContaID).Error; err == nil && conta.Tipo == "cartao" {
+			isCartao = true
+		}
+	}
+
 	if !input.IsParcelado || input.QtdParcelas < 2 {
 		t := input.Transacao
 		t.FamiliaID = familiaID
-		t.FamiliaID = familiaID
 		t.UsuarioID = &usuarioID // Salva o dono
 		t.GroupID = ""
+
+		if isCartao {
+			t.DataTransacao = t.DataTransacao.AddDate(0, 1, 0)
+			t.Status = "pendente"
+		}
 
 		if err := database.DB.Create(&t).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -154,17 +168,19 @@ func CreateTransacao(c *gin.Context) {
 	var transacoesCriadas []models.Transacao
 	nomeOriginal := input.Nome
 	dataOriginal := input.DataTransacao
+	if isCartao {
+		dataOriginal = dataOriginal.AddDate(0, 1, 0)
+	}
 	statusOriginal := input.Status
 
 	for i := 0; i < input.QtdParcelas; i++ {
 		t := input.Transacao
 		t.FamiliaID = familiaID
-		t.FamiliaID = familiaID
 		t.UsuarioID = &usuarioID
 		t.GroupID = groupID
 		t.Nome = fmt.Sprintf("%s (%d/%d)", nomeOriginal, i+1, input.QtdParcelas)
 		t.DataTransacao = dataOriginal.AddDate(0, i, 0)
-		if i > 0 {
+		if isCartao || i > 0 {
 			t.Status = "pendente"
 		} else {
 			t.Status = statusOriginal
@@ -177,6 +193,43 @@ func CreateTransacao(c *gin.Context) {
 		transacoesCriadas = append(transacoesCriadas, t)
 	}
 	c.JSON(http.StatusCreated, transacoesCriadas[0])
+}
+
+func PagarEmMassa(c *gin.Context) {
+	familiaID, ok := getFamiliaIDFromContext(c)
+	if !ok {
+		return
+	}
+
+	var input struct {
+		ContaID uint `json:"conta_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "conta_id é obrigatório"})
+		return
+	}
+
+	// Garante que a conta pertence à família
+	var conta models.Conta
+	if err := database.DB.Where("id = ? AND familia_id = ?", input.ContaID, familiaID).First(&conta).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Conta não encontrada"})
+		return
+	}
+
+	// Marca todas as despesas pendentes vinculadas a essa conta como pagas
+	result := database.DB.Model(&models.Transacao{}).
+		Where("conta_id = ? AND familia_id = ? AND tipo = 'despesa' AND status = 'pendente'", input.ContaID, familiaID).
+		Update("status", "pago")
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao atualizar transações"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Transações pagas com sucesso",
+		"atualizadas": result.RowsAffected,
+	})
 }
 
 func UpdateTransacao(c *gin.Context) {

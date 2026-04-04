@@ -32,6 +32,7 @@ func Connect() {
 		&models.User{},    // Atualizado de Usuario para User
 		&models.Familia{}, // Nova tabela
 		&models.Categoria{},
+		&models.Conta{},
 		&models.Transacao{},
 		// &models.TransacaoRecorrente{}, // Se ainda estiver usando
 	)

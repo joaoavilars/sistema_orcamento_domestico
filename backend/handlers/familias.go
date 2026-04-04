@@ -27,5 +27,15 @@ func CreateFamilia(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": "Erro ao criar família"})
 		return
 	}
+
+	// Criar conta padrão "Dinheiro" para a nova família
+	contaDinheiro := models.Conta{
+		FamiliaID: input.ID,
+		Nome:      "Dinheiro",
+		Tipo:      "dinheiro",
+		Ativo:     true,
+	}
+	database.DB.Create(&contaDinheiro)
+
 	c.JSON(http.StatusCreated, input)
 }

@@ -27,6 +27,11 @@ func SetupRouter() *gin.Engine {
 			protected.PUT("/categorias/:id", handlers.UpdateCategoria)
 			protected.DELETE("/categorias/:id", handlers.DeleteCategoria)
 
+			protected.GET("/contas", handlers.GetContas)
+			protected.POST("/contas", handlers.CreateConta)
+			protected.PUT("/contas/:id", handlers.UpdateConta)
+			protected.DELETE("/contas/:id", handlers.DeleteConta)
+
 			protected.GET("/transacoes", handlers.GetTransacoes)
 			protected.GET("/transacoes/anos", handlers.GetAnosDisponiveis)
 			protected.GET("/transacoes/export", handlers.ExportTransacoes)
@@ -34,6 +39,7 @@ func SetupRouter() *gin.Engine {
 			protected.PUT("/transacoes/:id", handlers.UpdateTransacao)
 			protected.DELETE("/transacoes/:id", handlers.DeleteTransacao)
 			protected.PATCH("/transacoes/:id/status", handlers.UpdateTransacaoStatus)
+			protected.PATCH("/transacoes/pagar-em-massa", handlers.PagarEmMassa)
 			protected.POST("/transacoes/:id/transferir-proximo-mes", handlers.TransferirProximoMes)
 
 			protected.GET("/dashboard/sumario", handlers.GetDashboardSumario)

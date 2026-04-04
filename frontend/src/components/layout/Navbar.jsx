@@ -75,6 +75,7 @@ const Navbar = () => {
                 <NavLink to="/busca" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Busca</NavLink>
                 <NavLink to="/dashboard" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Dashboard</NavLink>
                 <NavLink to="/categorias" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Categorias</NavLink>
+                <NavLink to="/contas" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Contas</NavLink>
                 {userIsAdmin && (
                   <NavLink to="/admin/usuarios" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>Usuários</NavLink>
                 )}
@@ -99,6 +100,7 @@ const Navbar = () => {
           <NavLink to="/busca" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Busca</NavLink>
           <NavLink to="/dashboard" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Dashboard</NavLink>
           <NavLink to="/categorias" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Categorias</NavLink>
+          <NavLink to="/contas" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Contas</NavLink>
           {userIsAdmin && (
             <NavLink to="/admin/usuarios" className={({ isActive }) => `${mobileLinkClass} ${isActive ? mobileActiveClass : mobileInactiveClass}`}>Usuários</NavLink>
           )}
